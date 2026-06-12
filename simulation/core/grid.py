@@ -17,7 +17,7 @@ class Grid:
         return 0 <= position.x < self.width and 0 <= position.y < self.height
 
     def is_blocked(self, position: Position) -> bool:
-        """True si la case contient un agent ou un obstacle actif."""
+        """True if the cell contains an agent or an active blocking entity."""
         if position in self._agents:
             return True
         return any(
@@ -27,10 +27,10 @@ class Grid:
 
     def place(self, entity: WorldEntity) -> None:
         if not self.is_valid(entity.position):
-            raise ValueError(f"Position {entity.position} hors limites.")
+            raise ValueError(f"Position {entity.position} out of bounds.")
         if isinstance(entity, Agent):
             if entity.position in self._agents:
-                raise ValueError(f"Case {entity.position} déjà occupée par un agent.")
+                raise ValueError(f"Cell {entity.position} already occupied by an agent.")
             self._agents[entity.position] = entity
         else:
             self._static.setdefault(entity.position, []).append(entity)

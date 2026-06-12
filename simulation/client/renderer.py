@@ -3,7 +3,7 @@ from core.simulation import Simulation
 from core.agent import Agent
 from core.objective import Objective
 
-# Constantes de rendu partagées (importables par PIBTRenderer)
+# Shared rendering constants (importable by PIBTRenderer)
 AGENT_COLORS = [
     (31, 119, 180), (255, 127, 14), (44, 160, 44),  (214, 39, 40),
     (148, 103, 189), (140, 86, 75), (227, 119, 194), (127, 127, 127),
@@ -26,8 +26,8 @@ MARGIN = 36
 
 class Renderer:
     _caption = "Grid Simulation"
-    # Texte d'en-tête le plus long possible — sert à dimensionner la fenêtre
-    # pour qu'aucun texte ne soit tronqué sur les petites grilles.
+    # Longest possible header text — used to size the window so that
+    # no text is clipped on small grids.
     _header_sample = "Step 9999  |  ◆ objective   ■ obstacle  |  close to quit"
 
     def __init__(self, simulation: Simulation) -> None:

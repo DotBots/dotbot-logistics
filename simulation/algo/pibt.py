@@ -2,20 +2,20 @@
 PIBT — Priority Inheritance with Backtracking
 Okumura et al., 2022.
 
-Usage via coordinator hook :
+Usage via coordinator hook:
     a0 = Agent(0, Position(0,0))
     a1 = Agent(1, Position(9,9))
     goals             = {a0: Position(9,9), a1: Position(0,0)}
-    initial_priorities = {a0: 5.0, a1: 3.0}   # optionnel
+    initial_priorities = {a0: 5.0, a1: 3.0}   # optional
     pibt = PIBT(goals=goals, initial_priorities=initial_priorities)
     sim  = Simulation(grid, coordinator=pibt)
     sim.add_agent(a0); sim.add_agent(a1)
     pibt.run(sim, steps=30, pause=0.5)
 
-Après chaque plan(), les attributs de suivi sont disponibles pour un rendu externe :
-    pibt._last_order       : list[Agent]                        — agents dans l'ordre de priorité
-    pibt._last_moves       : dict[Agent, (Position, Position)]  — (avant, après) par agent
-    pibt._last_inheritance : list[(Agent, Agent)]               — (pousseur, poussé) héritages réussis
+After each plan(), tracking attributes are available for external rendering:
+    pibt._last_order       : list[Agent]                        — agents in priority order
+    pibt._last_moves       : dict[Agent, (Position, Position)]  — (before, after) per agent
+    pibt._last_inheritance : list[(Agent, Agent)]               — (pusher, pushed) successful inheritances
 """
 
 from __future__ import annotations
@@ -33,18 +33,18 @@ EPSILON = 1e-3
 
 class PIBT(Coordinator):
     """
-    Coordinateur PIBT — implémente l'interface Coordinator.
+    PIBT coordinator — implements the Coordinator interface.
 
-    Branché dans Simulation.coordinator, remplace le calcul individuel
-    agent.next_move() par une planification coordonnée en une seule passe.
+    Plugged into Simulation.coordinator, replaces per-agent movement computation
+    with a single coordinated planning pass.
 
     Parameters
     ----------
     goals :
-        Dict Agent → Position cible. Les clés sont les objets Agent directement.
+        Dict Agent -> target Position. Keys are Agent objects directly.
     initial_priorities :
-        Priorités initiales optionnelles (dict Agent → float). Par défaut :
-        indice d'insertion (dernier ajouté = priorité la plus haute).
+        Optional initial priorities (dict Agent -> float). Default:
+        insertion index (last added = highest priority).
     """
 
     def __init__(
@@ -57,12 +57,12 @@ class PIBT(Coordinator):
             initial_priorities.copy() if initial_priorities is not None else {}
         )
 
-        # État interne d'un pas (réinitialisé à chaque plan())
+        # Internal state for one step (reset at each plan())
         self._next:      dict[Agent, Position] = {}
         self._processed: set[Agent]            = set()
         self._grid:      Optional[Grid]        = None
 
-        # Suivi exposé aux renderers — mis à jour à chaque plan()
+        # Tracking exposed to renderers — updated at each plan()
         self._last_order:       list[Agent]                          = []
         self._last_moves:       dict[Agent, tuple[Position, Position]] = {}
         self._last_inheritance: list[tuple[Agent, Agent]]            = []
@@ -86,7 +86,7 @@ class PIBT(Coordinator):
                 return agent
         return None
 
-    # ── Algorithme PIBT récursif (Algorithm 1) ────────────────────────────────
+    # ── Recursive PIBT algorithm (Algorithm 1) ───────────────────────────────
 
     def _pibt(self, agent: Agent, parent: Optional[Agent]) -> bool:
         grid = self._grid
@@ -102,7 +102,7 @@ class PIBT(Coordinator):
                 candidates.append(v)
         candidates.sort(key=lambda v: self._h(v, agent))
 
-        # Un agent déjà à son but préfère rester sur place
+        # An agent already at its goal prefers to stay in place
         if agent.position == self.goals.get(agent):
             candidates.insert(0, agent.position)
 
@@ -110,7 +110,7 @@ class PIBT(Coordinator):
             candidates = [v for v in candidates if v != parent.position]
 
         for v in candidates:
-            # Rester sur place : toujours valide si personne d'autre n'a réservé la case
+            # Staying in place: always valid if no other agent has reserved the cell
             if v == agent.position:
                 reserving = self._reserving_agent(v)
                 if reserving is None or reserving == agent:
@@ -124,11 +124,11 @@ class PIBT(Coordinator):
 
             occupant = grid.get_agent_at(v)
 
-            # Garde anti-récursion : on ne descend dans un occupant que si σ(occupant)
-            # est encore indéfini (occupant pas encore dans _next). Un occupant déjà
-            # dans _next a réservé sa case cible → il va libérer la sienne. Tester
-            # _processed ici (mis à jour seulement APRÈS retour) ré-entre les agents
-            # encore sur la pile → récursion infinie sur les cycles (rotations).
+            # Anti-recursion guard: only recurse into an occupant if σ(occupant)
+            # is still undefined (occupant not yet in _next). An occupant already
+            # in _next has reserved its target cell -> it will free its current one.
+            # Checking _processed here (updated only AFTER return) re-enters agents
+            # still on the stack -> infinite recursion on cycles (rotations).
             if occupant is not None and occupant not in self._next:
                 self._next[agent] = v
                 self.priorities[occupant] = self.priorities[agent] + EPSILON
@@ -149,7 +149,7 @@ class PIBT(Coordinator):
     # ── Interface Coordinator ─────────────────────────────────────────────────
 
     def plan(self, agents: list[Agent], grid: Grid) -> dict[int, Position]:
-        """Calcule les prochaines positions pour tous les agents (une passe coordonnée)."""
+        """Computes next positions for all agents (one coordinated pass)."""
         self._grid = grid
         self._init_priorities_if_needed(agents)
 

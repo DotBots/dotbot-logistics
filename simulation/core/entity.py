@@ -2,7 +2,7 @@ from .position import Position
 
 
 class WorldEntity:
-    """Base commune à toute entité placée sur la grille."""
+    """Base class for any entity placed on the grid."""
 
     def __init__(
         self,

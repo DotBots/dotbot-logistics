@@ -28,30 +28,30 @@ class Simulation:
     def step(self) -> None:
         self.current_step += 1
 
-        # 1. Apparition des entités en attente
+        # 1. Spawn pending entities whose appear_at step has been reached
         due = [e for e in self._pending if e.appear_at <= self.current_step]
         for entity in due:
             self.grid.place(entity)
             self._pending.remove(entity)
 
-        # 2. PIBT calcule toutes les positions futures (plan global)
+        # 2. Coordinator computes all next positions (global plan)
         next_positions = self.coordinator.plan(self.agents, self.grid)
 
-        # 3. Phase de "Levée" : on retire de la grille ceux qui se déplacent
-        # pour éviter qu'ils ne bloquent artificiellement les autres
+        # 3. Lift phase: remove moving agents from the grid first
+        # so they do not artificially block each other
         moving_agents = []
         for agent in self.agents:
             target_pos = next_positions.get(agent.agent_id, agent.position)
             if target_pos != agent.position:
                 moving_agents.append((agent, target_pos))
-                self.grid.remove(agent) # L'agent quitte son ancienne case
+                self.grid.remove(agent)  # agent leaves its current cell
 
-        # 4. Phase de "Pose" : on applique le déplacement interne et on replace sur la grille
+        # 4. Place phase: apply movement and put agents back on the grid
         for agent, target_pos in moving_agents:
             agent.move_to(target_pos)
-            self.grid.place(agent) # Plantera proprement si la case est déjà occupée !
+            self.grid.place(agent)  # will raise cleanly if cell is already occupied
 
-        # 5. Résolution des objectifs (inchangé)
+        # 5. Collect objectives
         for agent in self.agents:
             for obj in self.grid.get_entities_at(agent.position, Objective):
                 if obj.owner is None or obj.owner is agent:

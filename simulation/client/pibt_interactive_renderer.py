@@ -1,16 +1,16 @@
 """
-PIBTInteractiveRenderer — rendu PIBT avec navigation clavier.
+PIBTInteractiveRenderer — PIBT renderer with keyboard navigation.
 
-Pré-calcule tous les steps puis permet de naviguer librement dans l'historique :
-  Espace    pause / play
-  →         avancer d'un pas
-  ←         reculer d'un pas
-  Q / Échap quitter
+Pre-computes all steps then allows free navigation through history:
+  Space     pause / play
+  ->        step forward
+  <-        step back
+  Q / Esc   quit
 
-La barre de bas de fenêtre affiche pour chaque step l'ordre de priorité,
-le mouvement de chaque agent et les héritages de priorité déclenchés.
+The footer bar shows for each step the priority order,
+each agent's move, and any priority inheritances triggered.
 
-Usage :
+Usage:
     from client import PIBTInteractiveRenderer
     PIBTInteractiveRenderer(sim, pibt).run(steps=80, auto_ms=500)
 """
@@ -27,7 +27,7 @@ SEP        = (150, 150, 180)
 HDR_BG     = (230, 234, 250)
 
 CELL       = 60
-MARGIN     = 38   # hauteur de l'en-tête
+MARGIN     = 38   # header height
 FOOTER_HDR = 22   # ligne titre du pied de page
 FOOTER_ROW = 20   # hauteur par ligne d'agent dans le pied de page
 
@@ -45,21 +45,21 @@ class StepSnapshot:
 
 
 class PIBTInteractiveRenderer:
-    """Rendu interactif PIBT : pré-calcule l'historique, navigue au clavier."""
+    """Interactive PIBT renderer: pre-computes history, navigates with keyboard."""
 
     def __init__(self, simulation: Simulation, pibt: PIBT) -> None:
         self.sim  = simulation
         self.pibt = pibt
 
-    # ── API publique ──────────────────────────────────────────────────────────
+    # ── Public API ────────────────────────────────────────────────────────────
 
     def run(self, steps: int = 30, auto_ms: int = 600) -> None:
-        """Pré-calcule `steps` pas puis ouvre la fenêtre interactive."""
+        """Pre-computes `steps` steps then opens the interactive window."""
         history = self._build_history(steps)
         self._run_loop(history, auto_ms)
 
     def run_debug(self, steps: int = 30) -> None:
-        """Mode debug : affiche chaque step dans le terminal, zéro pygame."""
+        """Debug mode: prints each step to the terminal, no pygame window."""
         history = self._build_history(steps)
         total   = len(history) - 1
         for snap in history:
@@ -111,7 +111,7 @@ class PIBTInteractiveRenderer:
             )
             print(f"  objects: {obj_str}")
 
-    # ── Construction de l'historique ──────────────────────────────────────────
+    # ── History building ──────────────────────────────────────────────────────
 
     def _build_history(self, total_steps: int) -> list[StepSnapshot]:
         goals_by_id = {a.agent_id: pos for a, pos in self.pibt.goals.items()}
@@ -144,7 +144,7 @@ class PIBTInteractiveRenderer:
             result.append((e.position, kind))
         return result
 
-    # ── Boucle pygame interactive ─────────────────────────────────────────────
+    # ── Interactive pygame loop ───────────────────────────────────────────────
 
     def _run_loop(self, history: list[StepSnapshot], auto_ms: int) -> None:
         import pygame
@@ -159,8 +159,8 @@ class PIBTInteractiveRenderer:
         font_sm  = pygame.font.SysFont("monospace", 11)
         font_hdr = pygame.font.SysFont("monospace", 13)
 
-        # Largeur de fenêtre : assez large pour le texte le plus long (en-tête +
-        # lignes du pied de page), sinon l'affichage est tronqué sur petite grille.
+        # Window width: wide enough for the longest text (header +
+        # footer lines), otherwise display is clipped on a small grid.
         w = max(self.sim.grid.width * CELL,
                 self._required_text_width(history, total, font_hdr, font_sm))
 
@@ -216,24 +216,24 @@ class PIBTInteractiveRenderer:
 
             clock.tick(60)
 
-    # ── Dimensionnement ───────────────────────────────────────────────────────
+    # ── Sizing ────────────────────────────────────────────────────────────────
 
     def _required_text_width(self, history: list[StepSnapshot], total: int,
                              font_hdr, font_sm) -> int:
-        """Largeur en pixels du texte le plus long (en-tête + pied de page).
+        """Pixel width of the longest text (header + footer lines).
 
-        Reproduit les chaînes construites dans `_draw_header` / `_draw_footer`
-        pour mesurer exactement ce qui sera dessiné, indents compris.
+        Reproduces the strings built in `_draw_header` / `_draw_footer`
+        to measure exactly what will be drawn, including indents.
         """
         widest = 0
 
-        # En-tête (font_hdr, indent x=10) — "⏸ pause" est plus long que "▶ play".
+        # Header (font_hdr, indent x=10) — "⏸ pause" is longer than "▶ play".
         for step in (total,):
             label = f"Step {step} / {total}"
             text  = f"{label}   ⏸ pause   Space=pause   ← →=navigate   Q=quit"
             widest = max(widest, 10 + font_hdr.size(text)[0])
 
-        # Lignes du pied de page (font_sm, indent x=30).
+        # Footer lines (font_sm, indent x=30).
         for snap in history:
             if snap.step == 0:
                 continue
@@ -263,7 +263,7 @@ class PIBTInteractiveRenderer:
 
         return widest + 16   # marge droite
 
-    # ── Dessin ────────────────────────────────────────────────────────────────
+    # ── Drawing ───────────────────────────────────────────────────────────────
 
     def _draw_header(self, screen, snap: StepSnapshot, total: int,
                      playing: bool, font_hdr, w: int) -> None:
