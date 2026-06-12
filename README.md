@@ -1,21 +1,19 @@
 # dotbot-pibt
 
-Démos PIBT (Priority-Inheritance with Backtracking) pour swarm de DotBots —
-navigation multi-robot sans collision sur une grille discrète.
+PIBT (Priority Inheritance with Backtracking) demos for a [DotBot][pydotbot-doc] swarm —
+collision-free multi-robot navigation on a discrete grid.
 
-Documentation DotBot/pydotbot : **https://pydotbot.readthedocs.io/en/latest/**
+## Contents
 
----
+| File | Description |
+|------|-------------|
+| `sim_dotbot_pibt.py` | Simulator — sends all waypoints at once. Each bot follows its path at its own pace. |
+| `real_dotbot_pibt.py` | Real hardware — one waypoint at a time, with a sync barrier between each step. Keeps PIBT's collision guarantee on async hardware. |
+| `simulation/` | Standalone PIBT simulation engine (`core/`, `algo/pibt.py`). |
 
-## Contenu
+### Simulation architecture
 
-| Fichier | Description |
-|---------|-------------|
-| `sim_dotbot_pibt.py` | Simulateur — calcule les trajectoires PIBT et envoie **tous les waypoints en masse**. Chaque bot suit son chemin à son rythme. Adapté au simulateur (physique propre). |
-| `real_dotbot_pibt.py` | Matériel réel — exécution **pas-à-pas synchronisée** : un waypoint à la fois, barrière d'attente entre chaque pas. Préserve la garantie anti-collision de PIBT sur du matériel asynchrone. |
-| `simulation/` | Moteur de simulation PIBT autonome (`core/`, `algo/pibt.py`). |
-
----
+![Class diagram](simulation/diagrammes/simulation_class_diagram.png)
 
 ## Installation
 
@@ -23,11 +21,9 @@ Documentation DotBot/pydotbot : **https://pydotbot.readthedocs.io/en/latest/**
 pip install -r requirements.txt
 ```
 
----
+## Quick start
 
-## Lancement rapide
-
-### 1. Démarrer le simulateur DotBot
+### 1. Start the DotBot simulator
 
 ```bash
 dotbot run simulator \
@@ -35,71 +31,72 @@ dotbot run simulator \
     --init-state simulator_init_state.toml
 ```
 
-> Le fichier `simulator_init_state.toml` définit les positions initiales des bots.
-> Un exemple est disponible dans la documentation :
-> https://pydotbot.readthedocs.io/en/latest/
+> `simulator_init_state.toml` defines the initial bot positions.
+> See the [pydotbot documentation][pydotbot-doc] for an example.
 
-### 2. Lancer la démo simulateur (waypoints en masse)
+### 2. Simulator demo (bulk waypoints)
 
 ```bash
 python sim_dotbot_pibt.py
-python sim_dotbot_pibt.py --dry-run       # affiche sans envoyer
-python sim_dotbot_pibt.py --steps 40      # 40 pas PIBT
-python sim_dotbot_pibt.py --seed 42       # buts reproductibles
+python sim_dotbot_pibt.py --dry-run       # print without sending
+python sim_dotbot_pibt.py --steps 40      # 40 PIBT steps
+python sim_dotbot_pibt.py --seed 42       # reproducible goals
 ```
 
-### 3. Lancer la démo matériel réel (pas-à-pas)
+### 3. Real-hardware demo (step-by-step)
 
 ```bash
 python real_dotbot_pibt.py
 python real_dotbot_pibt.py --dry-run
 python real_dotbot_pibt.py --threshold 120 --step-timeout 10
-python real_dotbot_pibt.py --min-bots 3   # attend 3 bots localisés
+python real_dotbot_pibt.py --min-bots 3
 ```
 
----
+## Options
 
-## Options communes
+Common to both scripts:
 
-| Option | Défaut | Description |
-|--------|--------|-------------|
-| `--base URL` | `http://localhost:8000` | URL du contrôleur pydotbot |
-| `--cell-mm N` | `500` | Taille d'une case en mm |
-| `--map-cells N` | `8` | Grille N×N de repli (normalement dérivée de l'API) |
-| `--steps N` | `30` | Nombre de pas PIBT maximum |
-| `--threshold N` | `50` / `100` | Rayon d'arrivée par waypoint (mm) |
-| `--seed N` | aléatoire | Graine RNG pour des buts reproductibles |
-| `--dry-run` | — | Affiche sans envoyer de commandes |
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--base URL` | `http://localhost:8000` | pydotbot controller URL |
+| `--cell-mm N` | `500` | Cell size in mm |
+| `--map-cells N` | `8` | Fallback N×N grid (normally derived from the API) |
+| `--steps N` | `30` | Maximum PIBT steps |
+| `--threshold N` | `50` / `100` | Arrival radius per waypoint (mm) |
+| `--seed N` | random | RNG seed for reproducible goals |
+| `--dry-run` | — | Print without sending commands |
 
-Options supplémentaires de `real_dotbot_pibt.py` :
+Extra options for `real_dotbot_pibt.py`:
 
-| Option | Défaut | Description |
-|--------|--------|-------------|
-| `--step-timeout S` | `8.0` | Attente max par pas (secondes) |
-| `--settle S` | `0.3` | Pause après arrivée pour laisser les bots s'immobiliser |
-| `--min-bots N` | `2` | Nombre minimal de bots localisés requis au démarrage |
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--step-timeout S` | `8.0` | Max wait per step (seconds) |
+| `--settle S` | `0.3` | Pause after arrival to let bots stop |
+| `--min-bots N` | `2` | Minimum localised bots required at startup |
 
----
-
-## Mapping grille ↔ mm
+## Grid ↔ mm mapping
 
 ```
-case (gx, gy)  →  centre mm = (gx×cell_mm + cell_mm//2, gy×cell_mm + cell_mm//2)
-pos (x, y) mm  →  case      = (int(x/cell_mm), int(y/cell_mm))
+cell (gx, gy)  →  centre mm = (gx×cell_mm + cell_mm//2, gy×cell_mm + cell_mm//2)
+pos (x, y) mm  →  cell      = (int(x/cell_mm), int(y/cell_mm))
 ```
 
-Avec `cell_mm=500` et une carte `4000×4000 mm` : grille 8×8 cases.
+With `cell_mm=500` and a `4000×4000 mm` map: 8×8 grid.
 
----
-
-## Différence entre les deux scripts
+## sim vs real
 
 ```
 sim_dotbot_pibt.py          real_dotbot_pibt.py
 ─────────────────────────   ──────────────────────────────────
-Calcule tout d'un coup      Calcule pas à pas
-Envoie N waypoints/bot      Envoie 1 waypoint/bot/pas
-Pas d'attente               Barrière de sync entre chaque pas
-Simulateur uniquement       Simulateur ET matériel réel
+Computes all at once        Computes step by step
+Sends N waypoints/bot       Sends 1 waypoint/bot/step
+No waiting                  Sync barrier between each step
+Simulator only              Simulator AND real hardware
 threshold = 50 mm           threshold = 100 mm
 ```
+
+## License
+
+[BSD 3-Clause](LICENSE)
+
+[pydotbot-doc]: https://pydotbot.readthedocs.io/en/latest/
