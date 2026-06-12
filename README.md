@@ -20,7 +20,6 @@ Documentation DotBot/pydotbot : **https://pydotbot.readthedocs.io/en/latest/**
 ## Installation
 
 ```bash
-pip install pydotbot
 pip install -r requirements.txt
 ```
 
