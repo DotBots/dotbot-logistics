@@ -1,26 +1,32 @@
 #!/usr/bin/env python3
 """
-sim_dotbot_pibt.py — Simulator version, step-by-step synchronised execution.
+draft_real_dotbot_pibt.py — DRAFT: step-by-step execution with 250 mm cells.
+
+⚠  DRAFT — 250 mm cell size is under evaluation (vs 500 mm in real_dotbot_pibt.py).
+   Needs more testing on real hardware before promotion to real_dotbot_pibt.py.
 
 Computes PIBT trajectories and executes them step by step: at each step, one
 waypoint per bot (its next cell), then waits for ALL bots to arrive before the
-next step (synchronisation barrier). Reflects real hardware behaviour.
+next step (synchronisation barrier). Preserves PIBT's collision-avoidance
+guarantee on real asynchronous hardware. Also works with the simulator.
 
-Optimisations:
+Optimisations vs real_dotbot_pibt.py:
   1. Parallel waypoint dispatch via ThreadPoolExecutor
   2. Next-step pre-computation overlapped with bot travel
   4. Adaptive polling: starts at 50 ms, backs off up to 500 ms
 
-Prerequisites:
+Prerequisites (simulator):
     dotbot run simulator \\
-        --map-size 4000x4000 \\
+        --map-size 2000x2000 \\
         --simulator-init-state simulator_init_state.toml
 
+Prerequisites (real): gateway + controller connected to the swarm, bots localised (LH2).
+
 Usage:
-    python sim_dotbot_pibt.py              # step-by-step synchronised execution
-    python sim_dotbot_pibt.py --dry-run    # print targets without sending
-    python sim_dotbot_pibt.py --steps 40   # number of PIBT steps (default: 30)
-    python sim_dotbot_pibt.py --map-cells 8 --cell-mm 500  # 8x8 grid (default)
+    python draft_real_dotbot_pibt.py                 # synchronised step-by-step
+    python draft_real_dotbot_pibt.py --dry-run       # print targets without sending
+    python draft_real_dotbot_pibt.py --steps 40      # number of PIBT steps (default: 30)
+    python draft_real_dotbot_pibt.py --map-cells 8 --cell-mm 250  # 8x8 grid (default)
 
 Grid <-> mm mapping:
     cell (gx, gy) -> centre mm = (gx*cell_mm + cell_mm//2, gy*cell_mm + cell_mm//2)
@@ -42,11 +48,11 @@ from core import Simulation, Agent, Grid, Position
 from algo.pibt import PIBT
 
 DEFAULT_BASE_URL = "http://localhost:8000"
-DEFAULT_CELL_MM = 500       # cell size in mm (fixed in DotBotsMap.tsx)
-DEFAULT_MAP_CELLS = 8       # 8x8 grid = 4000x4000 mm
+DEFAULT_CELL_MM = 250       # cell size in mm (under evaluation)
+DEFAULT_MAP_CELLS = 8       # 8x8 grid = 2000x2000 mm
 DEFAULT_STEPS = 30
 DEFAULT_THRESHOLD = 100     # mm — bot considered "arrived" when distance < threshold.
-                            # 100 mm: < half-cell (250 mm), > LH2 noise (~20 mm).
+                            # 100 mm: < half-cell (125 mm), > LH2 noise (~20 mm).
 DEFAULT_STEP_TIMEOUT = 8.0  # s — max wait per PIBT step
 DEFAULT_SETTLE = 0.3        # s — pause after arrival to let bots stop moving
 
@@ -298,7 +304,7 @@ def fetch_grid_state_with_retry(
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="PIBT -> DotBot simulator demo (step-by-step)")
+    parser = argparse.ArgumentParser(description="PIBT -> DotBot demo DRAFT (250 mm cells, step-by-step)")
     parser.add_argument("--dry-run", action="store_true",
                         help="Print step-by-step targets without sending or waiting")
     parser.add_argument("--steps", type=int, default=DEFAULT_STEPS,
@@ -332,7 +338,7 @@ def main() -> None:
         dotbots_raw = gsm.fetch_dotbots()
     except requests.RequestException as e:
         print(f"Error: cannot reach the controller ({e})")
-        print("  -> dotbot run simulator --map-size 4000x4000 --simulator-init-state simulator_init_state.toml")
+        print("  -> dotbot run simulator --map-size 2000x2000 --simulator-init-state simulator_init_state.toml")
         sys.exit(1)
 
     if len(grid_state) < args.min_bots:
