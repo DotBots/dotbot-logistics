@@ -1,0 +1,48 @@
+% ===============================================================
+% rapport_simulation_L1.tex — continuation fragment of
+% L0/rapport_simulation_L0.tex. No preamble: this file is meant to
+% be \input just before \end{document} of the L0 report, inheriting
+% its article preamble. Stub minimal — hardware not yet run.
+% ===============================================================
+
+% ---------------------------------------------------------------
+\section{Level 1 --- Real DotBot Hardware}
+% ---------------------------------------------------------------
+
+Where L0 established the \emph{algorithmic} ceiling on abstract grids, Level~1
+measures the \emph{physical} limit on real DotBots, where the threshold between the
+robot's turning footprint and the cell size actually bites. The same PIBT planner
+drives the hardware through a step-by-step barrier (100\,mm arrival threshold, 8\,s
+per-step timeout): the planner advances one synchronous step, the bots are commanded
+to their next cells, and the loop waits until every bot is within threshold of its
+target before re-synchronising from the LH2 localisation. The headline quantity is the
+\textbf{plan-to-real gap} $\Delta = \text{success}_{\text{L0}} - \text{success}_{\text{L1}}$,
+which isolates how much of any degradation comes from hardware rather than from the
+algorithm.
+
+The batch harness (\texttt{test\_real\_dotbot\_pibt\_*bots\_*runs.py}, with the shared
+logger \texttt{l1\_metrics.py}) records one row per run to \texttt{l1\_per\_run.csv} and
+the per-$(\text{grid}, N)$ aggregate to \texttt{l1\_summary.csv}, using columns aligned
+with the L0 results CSV so the two levels join directly.
+
+% ---------------------------------------------------------------
+\subsection{Metrics}
+% ---------------------------------------------------------------
+
+\begin{itemize}
+    \item \textbf{Success rate} --- bots reaching their goal cell over $N$, averaged
+          over seeds (mean $\pm$ 95\,\% CI).
+    \item \textbf{Overshoot} --- real stop distance to the target versus the 100\,mm
+          threshold; the direct measurement of the turning limit.
+    \item \textbf{Step-timeout rate} --- fraction of (bot $\times$ step) that did not
+          settle within the 8\,s barrier.
+    \item \textbf{Throughput} --- goals completed per minute (the intralogistics framing).
+\end{itemize}
+
+% ---------------------------------------------------------------
+\subsection{Results}
+% ---------------------------------------------------------------
+
+\textit{[pending hardware run --- to be filled from \texttt{l1\_summary.csv} once the
+4$\times$4 (500\,mm), 5$\times$5 (400\,mm) and 8$\times$8 (250\,mm) sweeps have been run
+on real DotBots, then overlaid against the L0 baseline for the plan-to-real gap.]}
