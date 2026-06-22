@@ -3,7 +3,7 @@
 test_real_dotbot_pibt.py — Parametrised batch test: N bots, M runs.
 
 Runs PIBT step-by-step on N real DotBots for M independent trials and records
-per-run metrics and a summary to results/ (raw logs under results/raw_logs/).
+per-run metrics and a summary to log/ (raw logs under log/raw_logs/).
 
 This single script replaces the former per-N family
 (test_real_dotbot_pibt_2bots_5runs.py … _16bots_5runs.py), which were
@@ -25,11 +25,11 @@ import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "simulation"))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "simulation"))
 from core import Simulation, Agent, Grid, Position
 from algo.pibt import PIBT
 
-import l1_metrics
+import run_metrics
 
 # ── Batch parameters (set from CLI in main) ─────────────────────────────────────
 NUM_AGENTS  = 8
@@ -47,7 +47,7 @@ SETTLE       = 0.3
 RNG_SEED     = 0     # base seed; per-run seed = RNG_SEED + run_id (reproducible goals)
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
-RESULTS_DIR = os.path.dirname(os.path.abspath(__file__))
+RESULTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "log")
 RAW_LOGS_DIR = os.path.join(RESULTS_DIR, "raw_logs")
 
 
@@ -394,7 +394,7 @@ def _run_batch():
               f"{m.steps_taken} steps · {m.total_time_s:.1f}s · {m.step_timeouts} timeout(s) · "
               f"overshoot mean {m.mean_overshoot_mm:.0f} / max {m.max_overshoot_mm:.0f} mm")
 
-        l1_metrics.append_run(RESULTS_DIR, l1_metrics.make_row(
+        run_metrics.append_run(RESULTS_DIR, run_metrics.make_row(
             script_name=SCRIPT_NAME,
             grid_w=gsm.map_cells_x, grid_h=gsm.map_cells_y, cell_mm=CELL_MM,
             n_agents=NUM_AGENTS, seed=m.seed, run_id=m.run_id,
@@ -434,8 +434,8 @@ def _run_batch():
     print(f"Avg time     : {avg_time:.1f} s")
     print(f"Avg bots@goal: {avg_bots:.1f}/{NUM_AGENTS}")
 
-    per_run = os.path.join(RESULTS_DIR, l1_metrics.PER_RUN_CSV)
-    summary = l1_metrics.write_summary(RESULTS_DIR)
+    per_run = os.path.join(RESULTS_DIR, run_metrics.PER_RUN_CSV)
+    summary = run_metrics.write_summary(RESULTS_DIR)
     print(f"\nCSV per-run → {per_run}")
     print(f"CSV summary → {summary}")
 

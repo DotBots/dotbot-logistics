@@ -15,7 +15,7 @@ hardware) lives under [`docs/`](docs/index.md) and builds as a MkDocs site (`mkd
 | `draft_real_dotbot_pibt.py` | Draft real-hardware variant (250 mm cells, under evaluation). |
 | `bench_pibt.py` | L0 benchmark — headless PIBT sweep over grid resolution × N × seeds. |
 | `simulation/` | Standalone PIBT simulation engine (`core/`, `algo/pibt.py`). |
-| `log/test_real_dotbot_pibt.py` | Parametrised batch test (`--bots N --runs M`) writing L1 metrics. |
+| `test_real_dotbot_pibt.py` | Parametrised batch test (`--bots N --runs M`) writing L1 metrics. |
 | `log/` | Experiment outputs — `raw_logs/` and metrics CSVs. |
 | `docs/` | Documentation — roadmap, experiment reports, Inria hand-offs. |
 

@@ -96,8 +96,8 @@ The batch harness runs many seeded trials at a fixed bot count and records per-r
 and a summary under `log/`:
 
 ```bash
-python log/test_real_dotbot_pibt.py --bots 4 --runs 5
-python log/test_real_dotbot_pibt.py --bots 8           # 8 bots, 5 runs (default)
+python test_real_dotbot_pibt.py --bots 4 --runs 5
+python test_real_dotbot_pibt.py --bots 8           # 8 bots, 5 runs (default)
 ```
 
 Each invocation writes:

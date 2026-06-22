@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 """
-l1_metrics.py — Shared CSV logging for the L1 hardware harness.
+run_metrics.py — Shared CSV logging for the real-hardware test harness.
 
-Imported by every test_real_dotbot_pibt_*bots_*runs.py script. Appends one row
-per run to l1_per_run.csv and rewrites the per-(grid, N) aggregate in
-l1_summary.csv. Column names are kept aligned with the L0 results CSV
-(L0/l0_pibt_grid4x4_5x5_8x8_30seeds_100steps.csv) so the two levels can be
-joined directly for the plan-to-real gap (Fig. 1 / Fig. 2).
+Imported by test_real_dotbot_pibt.py. Appends one row per run to l1_per_run.csv
+and rewrites the per-(grid, N) aggregate in l1_summary.csv (both under log/).
+The schema mirrors the headless benchmark columns so a simulated sweep and a
+hardware run can be joined directly to measure the plan-to-real gap.
 """
 
 import csv
