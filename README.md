@@ -5,11 +5,16 @@ collision-free multi-robot navigation on a discrete grid.
 
 ## Contents
 
-| File | Description |
+| Path | Description |
 |------|-------------|
 | `sim_dotbot_pibt.py` | Simulator — sends all waypoints at once. Each bot follows its path at its own pace. |
 | `real_dotbot_pibt.py` | Real hardware — one waypoint at a time, with a sync barrier between each step. Keeps PIBT's collision guarantee on async hardware. |
+| `draft_real_dotbot_pibt.py` | Draft real-hardware variant (250 mm cells, under evaluation). |
+| `bench_pibt.py` | L0 benchmark — headless PIBT sweep over grid resolution × N × seeds. |
 | `simulation/` | Standalone PIBT simulation engine (`core/`, `algo/pibt.py`). |
+| `results/test_real_dotbot_pibt.py` | Parametrised batch test (`--bots N --runs M`) writing L1 metrics. |
+| `results/` | Experiment outputs — `L0/`, `L1/`, `reports/`, `raw_logs/`, metrics CSVs. |
+| `docs/` | Documentation — roadmap, experiment reports, Inria hand-offs. |
 
 ### Simulation architecture
 
