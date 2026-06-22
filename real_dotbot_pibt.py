@@ -20,7 +20,7 @@ Usage:
     python real_dotbot_pibt.py --dry-run       # print targets without sending
     python real_dotbot_pibt.py --steps 40      # number of PIBT steps (default: 30)
     python real_dotbot_pibt.py --threshold 120 --step-timeout 10
-    python real_dotbot_pibt.py --map-cells 8 --cell-mm 500  # 8x8 grid (default)
+    python real_dotbot_pibt.py --map-cells 8 --cell-mm 250  # 8x8 grid on 2000x2000 (default)
 
 Grid <-> mm mapping:
     cell (gx, gy) -> centre mm = (gx*cell_mm + cell_mm//2, gy*cell_mm + cell_mm//2)
@@ -41,8 +41,8 @@ from core import Simulation, Agent, Grid, Position
 from algo.pibt import PIBT
 
 DEFAULT_BASE_URL = "http://localhost:8000"
-DEFAULT_CELL_MM = 500     # cell size (fixed in DotBotsMap.tsx:256)
-DEFAULT_MAP_CELLS = 8     # 8x8 grid = 4000x4000 mm
+DEFAULT_CELL_MM = 250     # cell size in mm (matches simulator_init_state.toml)
+DEFAULT_MAP_CELLS = 8     # 8x8 grid = 2000x2000 mm
 DEFAULT_STEPS = 30
 DEFAULT_THRESHOLD = 100   # mm — a bot is considered "arrived" at its cell when
                           # distance < threshold. 100 mm: < half-cell (250 mm) to

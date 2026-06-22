@@ -99,7 +99,7 @@ python sim_dotbot_pibt.py --seed 42    # reproducible random goals
 |--------|---------|-------------|
 | `--dry-run` | — | Print step-by-step targets without sending or waiting |
 | `--steps N` | `30` | Number of PIBT steps |
-| `--cell-mm N` | `500` | Cell size in mm |
+| `--cell-mm N` | `250` | Cell size in mm |
 | `--map-cells N` | `8` | Fallback N×N grid (normally derived from the API `map_size`) |
 | `--threshold N` | `100` | Arrival radius per cell in mm |
 | `--step-timeout S` | `8.0` | Max wait (s) per step |
@@ -129,7 +129,7 @@ python real_dotbot_pibt.py --min-bots 3
 |--------|---------|-------------|
 | `--dry-run` | — | Print step-by-step targets without sending or waiting |
 | `--steps N` | `30` | Number of PIBT steps |
-| `--cell-mm N` | `500` | Cell size in mm |
+| `--cell-mm N` | `250` | Cell size in mm |
 | `--map-cells N` | `8` | Fallback N×N grid (normally derived from the API `map_size`) |
 | `--threshold N` | `100` | Arrival radius per cell in mm |
 | `--step-timeout S` | `8.0` | Max wait (s) per step; beyond it the bot is logged and skipped |
