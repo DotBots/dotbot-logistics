@@ -107,8 +107,7 @@ Each invocation writes:
 - an aggregated `results/l1_summary.csv`.
 
 The experiment sweeps cell size on a fixed 2000 × 2000 mm arena (4×4 / 5×5 / 8×8) and
-overlays the result against the Level 0 sweep. Compiled reports and figures live under
-`results/L0/`, `results/L1/`, and `results/reports/`.
+overlays the result against the Level 0 sweep.
 
 ## Quick troubleshooting
 

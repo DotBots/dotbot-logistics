@@ -16,7 +16,7 @@ hardware) lives under [`docs/`](docs/index.md) and builds as a MkDocs site (`mkd
 | `bench_pibt.py` | L0 benchmark — headless PIBT sweep over grid resolution × N × seeds. |
 | `simulation/` | Standalone PIBT simulation engine (`core/`, `algo/pibt.py`). |
 | `results/test_real_dotbot_pibt.py` | Parametrised batch test (`--bots N --runs M`) writing L1 metrics. |
-| `results/` | Experiment outputs — `L0/`, `L1/`, `reports/`, `raw_logs/`, metrics CSVs. |
+| `results/` | Experiment outputs — `raw_logs/` and metrics CSVs. |
 | `docs/` | Documentation — roadmap, experiment reports, Inria hand-offs. |
 
 ### Simulation architecture
