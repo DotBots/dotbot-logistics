@@ -18,12 +18,14 @@ planner — not physics.
 
 ## Watch it run — the interactive viewer
 
-The `simulation/` engine ships with a pygame viewer that animates PIBT on a 10×10 grid and
-shows, at each step, the priority order, every agent's move, and the priority-inheritance
-chains.
+The `sim_pibt.py` script ships an interactive pygame viewer that animates PIBT on a small
+grid and shows, at each step, the priority order, every agent's move, and the
+priority-inheritance chains. The scenario (grid size, start positions, goals, priorities,
+obstacles) is **edited directly in the file** — there are no command-line options.
 
 ```bash
-python simulation/demo.py
+python sim_pibt.py        # launch the interactive viewer
+python sim_pibt.py -d     # debug mode (hides the pygame support prompt)
 ```
 
 | Key | Action |
@@ -42,18 +44,18 @@ python simulation/main.py
 
 To plug in your own planner, subclass `Coordinator` and implement `plan()` — see
 `simulation/algo/random_walk.py` for the smallest possible example, and the docstring at
-the top of `simulation/demo.py` for the renderer options.
+the top of `sim_pibt.py` for the renderer options.
 
 ## Measure it — the headless benchmark
 
-To turn "it works" into numbers, `sim_pibt.py` runs PIBT with **no pygame and no
+To turn "it works" into numbers, `sim_many_pibt.py` runs PIBT with **no pygame and no
 hardware**, sweeping grid resolution × number of robots × random seeds and writing one CSV
 row per instance.
 
 ```bash
-python sim_pibt.py                  # full sweep, 30 seeds
-python sim_pibt.py --seeds 5        # quick smoke-test
-python sim_pibt.py --out my.csv     # custom output file
+python sim_many_pibt.py                  # full sweep, 30 seeds
+python sim_many_pibt.py --seeds 5        # quick smoke-test
+python sim_many_pibt.py --out my.csv     # custom output file (default: l0_results.csv)
 ```
 
 The sweep fixes a **2000 × 2000 mm arena** and varies the cell size, which is the core

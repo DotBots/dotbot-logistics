@@ -5,9 +5,10 @@ Same plan, real robots. The controller is now connected to a physical swarm thro
 localised by **Lighthouse 2 (LH2)**. This is the ground-truth level: it's where real
 physics — turning radius, overshoot, localisation noise — meets the plan.
 
-The driver, `real_dotbot_pibt.py`, is the **hardened** version of the Level 1 script: it
-adds a per-step timeout (a stuck bot is logged and skipped instead of blocking the swarm)
-and re-syncs the plan to the bots' real LH2 positions after every step.
+The driver, `real_dotbot_pibt.py`, is the **conservative** counterpart of the Level 1
+script: it sends one waypoint per bot sequentially, then holds a synchronisation barrier
+that polls the bots' real LH2 positions until all have arrived. A bot that exceeds
+`--step-timeout` is logged and skipped instead of blocking the swarm (no deadlock).
 
 ## Prerequisites
 
@@ -86,9 +87,6 @@ python real_dotbot_pibt.py --seed 1 --steps 20    # real run
 | `--seed` | random | Reproducible random goals |
 | `--map-cells` | 8 | Fallback N×N grid if the API `map_size` is unavailable |
 | `--cell-mm` | 500 | Cell size in mm (centres at `gx*cell_mm + cell_mm//2`) |
-
-A draft variant, `draft_real_dotbot_pibt.py`, explores 250 mm cells (vs 500 mm) and is still
-under evaluation on hardware.
 
 ## Reproducing the experiments
 

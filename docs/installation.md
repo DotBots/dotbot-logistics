@@ -44,8 +44,9 @@ run the engine on its own, it has its own `simulation/requirements.txt`.
 
 | Path | Used at | Purpose |
 |------|---------|---------|
-| `simulation/` | Level 0 | Standalone PIBT engine (`core/`, `algo/pibt.py`) + pygame viewer. |
-| `sim_pibt.py` | Level 0 | Headless PIBT benchmark sweep. |
+| `simulation/` | Level 0 | Standalone PIBT engine (`core/`, `algo/pibt.py`) + renderers. |
+| `sim_pibt.py` | Level 0 | Interactive pygame viewer (edit-in-file scenario). |
+| `sim_many_pibt.py` | Level 0 | Headless PIBT benchmark sweep. |
 | `sim_dotbot_pibt.py` | Level 1 | Drives the DotBot **simulator** through the controller API. |
 | `real_dotbot_pibt.py` | Level 2 | Drives **real** DotBots, step-by-step with a sync barrier. |
 | `real_dotbot_pibt_batch.py` | Level 2 | Parametrised batch test harness (`--bots N`). |

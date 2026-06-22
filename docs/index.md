@@ -41,6 +41,6 @@ Start with [Installation](installation.md), then follow the levels in order.
 
 | Level | Reality | Entry point | What it answers |
 |-------|---------|-------------|-----------------|
-| **0** | Abstract grid, no robot | `simulation/demo.py`, `sim_pibt.py` | Is the planner correct, and where does it break? |
+| **0** | Abstract grid, no robot | `sim_pibt.py`, `sim_many_pibt.py` | Is the planner correct, and where does it break? |
 | **1** | Simulated bots + controller | `dotbot run simulator` + `sim_dotbot_pibt.py` | Does the plan drive bots through the real API? |
 | **2** | Real DotBots | `dotbot run controller` + `real_dotbot_pibt.py` | Does it survive real physics? |

@@ -51,17 +51,20 @@ independent of the transport underneath.
 
 ## Bulk vs. step-by-step
 
-There are two ways to hand a plan to the bots, and the difference is the whole reason
-Level 2 needs a hardened variant:
+Both scripts run the same step-by-step plan with the same options and defaults; they differ
+only in how they dispatch waypoints, which is why Level 2 uses a separate, more conservative
+variant:
 
 | | `sim_dotbot_pibt.py` (this page) | `real_dotbot_pibt.py` ([Level 2](level-2-real.md)) |
 |---|---|---|
-| Dispatch | One waypoint per bot per step | One waypoint per bot per step |
-| Synchronisation | Sync barrier between steps | Sync barrier + per-step timeout |
+| Dispatch | All moved waypoints in parallel | One waypoint per bot, sequentially |
+| Planning | Pre-computes the next step while bots travel | Compute → send → wait, serially |
+| Synchronisation | Sync barrier + per-step timeout | Sync barrier + per-step timeout |
 | Target | Simulator (clean physics) | Real hardware **and** simulator |
 
-Because the simulator has clean, instantaneous physics, the step barrier always closes; on
-real hardware it may not, which is what the timeout and re-sync logic at Level 2 handle.
+Both hold a synchronisation barrier with a per-step timeout. Because the simulator has clean,
+instantaneous physics, the barrier always closes quickly; on real hardware a bot may stall,
+and the timeout (logging and skipping it) is what keeps the swarm from deadlocking.
 
 !!! tip "Why the simulator is not a measured level"
     The simulator is the fastest way to *see the plan drive bots through the real API*, but
