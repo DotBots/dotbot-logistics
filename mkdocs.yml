@@ -11,6 +11,7 @@ theme:
   name: material
   features:
     - navigation.sections
+    - navigation.indexes
     - navigation.top
     - content.code.copy
     - content.code.annotate
@@ -46,5 +47,8 @@ nav:
   - Level 0 — Run a PIBT: level-0-algorithm.md
   - Level 1 — Fake bots: level-1-simulator.md
   - Level 2 — Real bots: level-2-real.md
-  - Contributing: contributing.md
+  - Contributing:
+      - contributing/index.md
+      - Architecture: contributing/architecture.md
+      - Improvement: contributing/improvement.md
   - Appendix: appendix.md

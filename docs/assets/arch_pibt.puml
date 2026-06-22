@@ -1,0 +1,56 @@
+@startuml arch_pibt
+title Architecture detail C — PIBT algorithm (simulation/algo/pibt.py)
+
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam linetype ortho
+skinparam defaultFontName sans-serif
+skinparam ClassBorderColor #555555
+
+abstract class Coordinator {
+    + {abstract} plan(agents:list[Agent], grid:Grid) : dict[int,Position]
+}
+
+class PIBT {
+    + goals : dict[Agent,Position]
+    + priorities : dict[Agent,float]
+    - _next : dict[Agent,Position]
+    - _processed : set[Agent]
+    - _grid : Grid | None
+    + _last_order : list[Agent]
+    + _last_moves : dict[Agent,(Position,Position)]
+    + _last_inheritance : list[(Agent,Agent)]
+    --
+    + plan(agents:list[Agent], grid:Grid) : dict[int,Position]
+    - _pibt(agent:Agent, parent:Agent|None) : bool
+    - _h(pos:Position, agent:Agent) : int
+    - _reserving_agent(pos:Position) : Agent | None
+    - _init_priorities_if_needed(agents)
+    .. constants ..
+    DIRS = 4-neighbour    EPSILON = 1e-3
+}
+
+PIBT .up.|> Coordinator
+
+note right of PIBT
+  plan() — one coordinated pass:
+   1. priorities -= 1 for all
+   2. agent at its goal -> priority = -inf
+   3. order = agents sorted by priority desc
+   4. for each unprocessed agent: _pibt(agent, None)
+   5. return {agent_id -> next Position}
+
+  _pibt(agent, parent) — Algorithm 1 (Okumura et al. 2022):
+   • candidates = free 4-neighbours, sorted by Manhattan _h to goal
+   • agent already at goal -> prefer staying in place
+   • skip the parent's cell (no swap back)
+   • reserve a free candidate in _next
+   • if candidate holds an occupant NOT yet planned:
+       occupant inherits priority (+EPSILON) and _pibt(occupant, agent)  [priority inheritance]
+       success -> keep; failure -> release and try next candidate     [backtracking]
+   • no candidate works -> stay put, return False
+
+  tracking (_last_*) is read by the Level 0 viewer to draw order / moves / inheritance chains
+end note
+
+@enduml

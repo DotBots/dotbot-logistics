@@ -1,0 +1,89 @@
+@startuml arch_core
+title Architecture detail B — simulation core engine (simulation/core)
+
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam linetype ortho
+skinparam defaultFontName sans-serif
+skinparam ClassBorderColor #555555
+
+class Position <<frozen dataclass>> {
+    + x : int
+    + y : int
+    + __add__(other:Position) : Position
+}
+
+class WorldEntity {
+    + entity_id : int
+    + position : Position
+    + appear_at : int
+    + blocks_movement : bool
+    + active : bool <<property>>
+}
+
+class Agent {
+    + agent_id : int <<property = entity_id>>
+    + steps_taken : int
+    + move_to(new_position:Position)
+    + __eq__ / __hash__  (by agent_id)
+}
+
+class Objective {
+    + owner : Agent | None
+    + collected : bool
+    + active : bool <<property = not collected>>
+}
+
+class Grid {
+    + width : int
+    + height : int
+    - _agents : dict[Position,Agent]
+    - _static : dict[Position,list[WorldEntity]]
+    --
+    + is_valid(p:Position) : bool
+    + is_blocked(p:Position) : bool
+    + place(entity:WorldEntity)
+    + remove(entity:WorldEntity)
+    + move(agent:Agent, p:Position) : bool
+    + get_agent_at(p:Position) : Agent | None
+    + get_entities_at(p:Position, kind=None) : list
+    + get_all(kind=None) : list
+}
+
+abstract class Coordinator {
+    + {abstract} plan(agents:list[Agent], grid:Grid) : dict[int,Position]
+}
+note right of Coordinator : implemented by PIBT (see PIBT detail)
+
+class Simulation {
+    + grid : Grid
+    + agents : list[Agent]
+    + entities : list[WorldEntity]
+    - _pending : list[WorldEntity]
+    + current_step : int
+    + coordinator : Coordinator
+    --
+    + add_agent(agent:Agent)
+    + add_object(entity:WorldEntity)
+    + step()
+}
+note bottom of Simulation
+  step():
+   1. spawn _pending where appear_at <= current_step
+   2. next = coordinator.plan(agents, grid)
+   3. LIFT: grid.remove(agent) for every agent that changes cell
+   4. PLACE: agent.move_to(target); grid.place(agent)  (raises if cell taken)
+   5. collect Objective at each agent (owner is None or owner is agent)
+end note
+
+Agent      --|> WorldEntity
+Objective  --|> WorldEntity
+WorldEntity "1" --> "1" Position : position
+Simulation "1" *-- "n" Agent : agents
+Simulation "1" *-- "n" WorldEntity : entities
+Simulation "1" --> "1" Grid
+Simulation "1" --> "1" Coordinator
+Grid o-- Agent : _agents
+Grid o-- WorldEntity : _static
+
+@enduml

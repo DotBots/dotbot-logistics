@@ -6,7 +6,12 @@ on a discrete grid; PIBT guarantees that no two robots ever claim the same cell,
 it a natural fit for **intralogistics** — many small autonomous units moving stock around a
 shared warehouse floor without colliding.
 
-![A PIBT run on a discrete grid](assets/dotbot_pibt_demo.png){ width="520" }
+[![Architecture: mm world (DotBot API) ↔ cell world (PIBT)](assets/arch_overview.png)](contributing/architecture.md)
+
+*Architecture overview — the boundary between the **mm world** (the DotBot controller's
+REST API, everything in millimetres) and the **cell world** (`simulation/`, everything in
+integer grid cells), bridged by `GridStateManager`. See
+[Contributing → Architecture](contributing/architecture.md) for the detailed diagrams.*
 
 ## What this documentation is for
 
