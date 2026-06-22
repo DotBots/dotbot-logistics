@@ -28,8 +28,8 @@ HDR_BG     = (230, 234, 250)
 
 CELL       = 60
 MARGIN     = 38   # header height
-FOOTER_HDR = 22   # ligne titre du pied de page
-FOOTER_ROW = 20   # hauteur par ligne d'agent dans le pied de page
+FOOTER_HDR = 22   # footer section title height
+FOOTER_ROW = 20   # height per agent row in footer
 
 
 @dataclass
