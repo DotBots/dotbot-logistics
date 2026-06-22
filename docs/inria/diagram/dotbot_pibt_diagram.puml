@@ -1,0 +1,175 @@
+@startuml dotbot_pibt_demo
+
+title dotbot_pibt_demo — frontière monde mm ↔ monde cellules
+
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+skinparam ArrowColor #444444
+skinparam ClassBorderColor #666666
+
+' ╔══════════════════════════════════════════════════════════════════════════╗
+' ║  MONDE mm  (réel / API DotBot — tout est en millimètres)                  ║
+' ╚══════════════════════════════════════════════════════════════════════════╝
+
+package "Monde mm  (millimètres)" #FFEEEE {
+
+    component "DotBot Controller\n(FastAPI :8000)" as API {
+        note as routes
+          GET  /controller/dotbots
+               → lh2_position {x,y}  (mm)
+          GET  /controller/map_size
+               → {width, height}     (mm)
+          PUT  /controller/dotbots/{addr}/0/waypoints
+               → waypoints [{x,y}]   (mm)
+        end note
+    }
+}
+
+' ╔══════════════════════════════════════════════════════════════════════════╗
+' ║  FRONTIÈRE DE CONVERSION  — GridStateManager traduit mm ↔ cellule         ║
+' ╚══════════════════════════════════════════════════════════════════════════╝
+
+package "Frontière de conversion  (dotbot_pibt_demo.py)" #FFF9E6 {
+
+    class GridStateManager {
+        base_url : str
+        cell_mm : int           // taille d'une case (mm)
+        map_cells_x : int       // dérivé de map_size / cell_mm
+        map_cells_y : int       //   ⟵ set_map_size(width_mm, height_mm)
+        --
+        + fetch_dotbots() : list[dict]
+        + fetch_map_size() : (width_mm, height_mm)
+        + set_map_size(w_mm, h_mm)
+        + mm_to_cell(x_mm, y_mm) : Position
+        + cell_to_mm(pos) : (x_mm, y_mm)
+        + get_grid_state() : dict[addr, Position]
+        + resolve_conflicts(positions) : dict[addr, Position]
+    }
+
+    note bottom of GridStateManager
+      ── mm → cellule  (LOSSY) ──
+      gx = clamp(int(x_mm / cell_mm), 0, map_cells_x-1)
+      gy = clamp(int(y_mm / cell_mm), 0, map_cells_y-1)
+      • floor + clamp : la position sous-case est PERDUE
+      • bots tombés sur la même case → resolve_conflicts()
+
+      ── cellule → mm  (centre de case) ──
+      x_mm = gx*cell_mm + cell_mm//2
+      y_mm = gy*cell_mm + cell_mm//2
+    end note
+}
+
+' ╔══════════════════════════════════════════════════════════════════════════╗
+' ║  MONDE cellules  (simulation/ — tout est en cases entières Position)      ║
+' ╚══════════════════════════════════════════════════════════════════════════╝
+
+package "Monde cellules  (simulation/core)" #EEF4FF {
+
+    class Position <<frozen dataclass>> {
+        x : int     // case
+        y : int     // case
+        --
+        + __add__(other) : Position
+    }
+
+    class WorldEntity {
+        entity_id : int
+        position : Position
+        appear_at : int
+        blocks_movement : bool
+        active : bool
+    }
+
+    class Agent {
+        + agent_id : int   // property → entity_id
+        steps_taken : int
+        --
+        + move_to(new_position)
+    }
+
+    class Objective {
+        owner : Agent | None
+        collected : bool
+    }
+
+    class Grid {
+        width : int        // en cases
+        height : int       // en cases
+        --
+        + is_valid(position) : bool
+        + place(entity)
+        + remove(entity)
+        + get_agent_at(position) : Agent | None
+        + get_entities_at(position, kind=None) : list
+    }
+
+    abstract class Coordinator {
+        {abstract} + plan(agents, grid) : dict[int, Position]
+    }
+
+    class Simulation {
+        grid : Grid
+        agents : list[Agent]
+        entities : list[WorldEntity]
+        coordinator : Coordinator
+        current_step : int
+        --
+        + add_agent(agent)
+        + add_object(entity)
+        + step()
+    }
+
+    Agent      --|> WorldEntity
+    Objective  --|> WorldEntity
+    WorldEntity "1" --> "1" Position : position
+    Simulation "1" *-- "n" Agent : agents
+    Simulation "1" --> "1" Grid : grid
+    Simulation "1" --> "1" Coordinator : coordinator
+
+    note bottom of Simulation
+      step() — « lever / poser » (plus de Grid.move) :
+        1. spawn entités différées (appear_at)
+        2. next = coordinator.plan(agents, grid)
+        3. lever : grid.remove(agent) pour chaque mouvant
+        4. poser : agent.move_to(p) ; grid.place(agent)
+        5. collecte des Objective
+    end note
+}
+
+' ── simulation/algo ───────────────────────────────────────────────────────────
+
+package "Monde cellules  (simulation/algo)" #FFF4EE {
+
+    class PIBT {
+        goals : dict[Agent, Position]
+        priorities : dict[Agent, float]
+        --
+        + plan(agents, grid) : dict[int, Position]
+    }
+
+    PIBT .up.|> Coordinator : implements
+}
+
+' ── Pilote top-level dotbot_pibt_demo.py ──────────────────────────────────────
+
+note as N1
+  Fonctions top-level :
+  • _assign_random_goals(agents, grid, rng) → dict[Agent, Position]
+  • run_pibt(grid_state, cells_x, cells_y, steps, rng) → paths, goals
+  • send_waypoints(base_url, address, waypoints_mm, threshold)
+  • main()
+end note
+
+' ── Flux de données traversant la frontière ───────────────────────────────────
+
+API           --> GridStateManager : "lh2_position (mm)\nmap_size (mm)" #Red
+GridStateManager --> Position       : "get_grid_state()\n→ cases" #Green
+N1 ..> GridStateManager : set_map_size() / get_grid_state()
+N1 ..> Grid             : crée (cells_x × cells_y)
+N1 ..> Agent            : crée (position = case)
+N1 ..> PIBT             : instancie (buts aléatoires)
+N1 ..> Simulation       : instancie & step()
+N1 --> GridStateManager : "cell_to_mm(path)\n→ waypoints (mm)" #Green
+N1 --> API              : "send_waypoints()\nPUT waypoints (mm)" #Red
+
+@enduml
