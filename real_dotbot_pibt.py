@@ -6,12 +6,12 @@ Computes PIBT trajectories and executes them step by step: at each step, one
 waypoint per bot (its next cell), then waits for ALL bots to arrive before the
 next step (synchronisation barrier). Preserves PIBT's collision-avoidance
 guarantee on real asynchronous hardware. Also works with the simulator.
-For the original simulator version (bulk dispatch), see sim_dotbot_pibt.py.
+For the parallel + pipelined simulator version, see sim_dotbot_pibt.py.
 
 Prerequisites (simulator):
     dotbot run simulator \\
-        --map-size 4000x4000 \\
-        --init-state simulator_init_state.toml
+        --map-size 2000x2000 \\
+        --simulator-init-state simulator_init_state.toml
 
 Prerequisites (real): gateway + controller connected to the swarm, bots localised (LH2).
 
@@ -351,7 +351,7 @@ def main() -> None:
     except requests.RequestException as e:
         print(f"Error: cannot reach the controller ({e})")
         print("  -> start the real gateway + controller, or the simulator:")
-        print("     dotbot run simulator --map-size 4000x4000 --init-state simulator_init_state.toml")
+        print("     dotbot run simulator --map-size 2000x2000 --simulator-init-state simulator_init_state.toml")
         sys.exit(1)
 
     if len(grid_state) < args.min_bots:

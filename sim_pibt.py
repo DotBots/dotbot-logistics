@@ -1,5 +1,5 @@
 """
-sim_pibt.py — Interactive PIBT demo on a 10x10 grid.
+sim_pibt.py — Interactive PIBT demo on a 5x5 grid.
 
 Controls:
     Space     pause / play

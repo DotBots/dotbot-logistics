@@ -13,7 +13,7 @@ Optimisations:
 
 Prerequisites:
     dotbot run simulator \\
-        --map-size 4000x4000 \\
+        --map-size 2000x2000 \\
         --simulator-init-state simulator_init_state.toml
 
 Usage:
@@ -332,7 +332,7 @@ def main() -> None:
         dotbots_raw = gsm.fetch_dotbots()
     except requests.RequestException as e:
         print(f"Error: cannot reach the controller ({e})")
-        print("  -> dotbot run simulator --map-size 4000x4000 --simulator-init-state simulator_init_state.toml")
+        print("  -> dotbot run simulator --map-size 2000x2000 --simulator-init-state simulator_init_state.toml")
         sys.exit(1)
 
     if len(grid_state) < args.min_bots:
