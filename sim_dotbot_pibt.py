@@ -20,8 +20,8 @@ Usage:
     python sim_dotbot_pibt.py              # step-by-step synchronised execution
     python sim_dotbot_pibt.py --dry-run    # print targets without sending
     python sim_dotbot_pibt.py --steps 40   # number of PIBT steps (default: 30)
-    python sim_dotbot_pibt.py --map-cells 8  # 8x8 grid on 2000x2000 (default, 250 mm cells)
-    python sim_dotbot_pibt.py --map-cells 5  # 5x5 grid on 2000x2000 (400 mm cells)
+    python sim_dotbot_pibt.py --map-cells 5  # 5x5 grid on 2000x2000 (default, 400 mm cells)
+    python sim_dotbot_pibt.py --map-cells 8  # 8x8 grid on 2000x2000 (250 mm cells)
 
 Grid <-> mm mapping:
     cell (gx, gy) -> centre mm = (gx*cell_mm + cell_mm//2, gy*cell_mm + cell_mm//2)
@@ -44,10 +44,10 @@ from algo.pibt import PIBT
 
 DEFAULT_BASE_URL = "http://localhost:8000"
 DEFAULT_CELL_MM = None      # cell size in mm; if None, derived from map_size / map_cells
-DEFAULT_MAP_CELLS = 8       # grid resolution NxN (8 -> 250 mm cells, 5 -> 400 mm on 2000x2000)
+DEFAULT_MAP_CELLS = 5       # grid resolution NxN (5 -> 400 mm cells, 8 -> 250 mm on 2000x2000)
 DEFAULT_STEPS = 30
 DEFAULT_THRESHOLD = 100     # mm — bot considered "arrived" when distance < threshold.
-                            # 100 mm: < half-cell (250 mm), > LH2 noise (~20 mm).
+                            # 100 mm: < half-cell (200 mm), > LH2 noise (~20 mm).
 DEFAULT_STEP_TIMEOUT = 8.0  # s — max wait per PIBT step
 DEFAULT_SETTLE = 0.3        # s — pause after arrival to let bots stop moving
 
@@ -312,7 +312,7 @@ def main() -> None:
                         help="Cell size in mm (default: derived from map_size / --map-cells)")
     parser.add_argument("--map-cells", type=int, default=DEFAULT_MAP_CELLS,
                         help=f"Grid resolution NxN (default: {DEFAULT_MAP_CELLS}; "
-                             f"8 -> 250 mm cells, 5 -> 400 mm on a 2000x2000 map)")
+                             f"5 -> 400 mm cells, 8 -> 250 mm on a 2000x2000 map)")
     parser.add_argument("--threshold", type=int, default=DEFAULT_THRESHOLD,
                         help=f"Arrival radius per cell in mm (default: {DEFAULT_THRESHOLD})")
     parser.add_argument("--step-timeout", type=float, default=DEFAULT_STEP_TIMEOUT,
