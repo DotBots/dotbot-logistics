@@ -20,7 +20,8 @@ Usage:
     python sim_dotbot_pibt.py              # step-by-step synchronised execution
     python sim_dotbot_pibt.py --dry-run    # print targets without sending
     python sim_dotbot_pibt.py --steps 40   # number of PIBT steps (default: 30)
-    python sim_dotbot_pibt.py --map-cells 8 --cell-mm 250  # 8x8 grid on 2000x2000 (default)
+    python sim_dotbot_pibt.py --map-cells 8  # 8x8 grid on 2000x2000 (default, 250 mm cells)
+    python sim_dotbot_pibt.py --map-cells 5  # 5x5 grid on 2000x2000 (400 mm cells)
 
 Grid <-> mm mapping:
     cell (gx, gy) -> centre mm = (gx*cell_mm + cell_mm//2, gy*cell_mm + cell_mm//2)
@@ -42,8 +43,8 @@ from core import Simulation, Agent, Grid, Position
 from algo.pibt import PIBT
 
 DEFAULT_BASE_URL = "http://localhost:8000"
-DEFAULT_CELL_MM = 250       # cell size in mm (matches simulator_init_state.toml)
-DEFAULT_MAP_CELLS = 8       # 8x8 grid = 2000x2000 mm
+DEFAULT_CELL_MM = None      # cell size in mm; if None, derived from map_size / map_cells
+DEFAULT_MAP_CELLS = 8       # grid resolution NxN (8 -> 250 mm cells, 5 -> 400 mm on 2000x2000)
 DEFAULT_STEPS = 30
 DEFAULT_THRESHOLD = 100     # mm — bot considered "arrived" when distance < threshold.
                             # 100 mm: < half-cell (250 mm), > LH2 noise (~20 mm).
@@ -56,13 +57,17 @@ DEFAULT_SETTLE = 0.3        # s — pause after arrival to let bots stop moving
 class GridStateManager:
     """Fetches DotBot state from the REST API and converts it to PIBT grid positions."""
 
-    def __init__(self, base_url: str, cell_mm: int, map_cells: int):
+    def __init__(self, base_url: str, cell_mm: int | None, map_cells: int):
         self.base_url = base_url
-        self.cell_mm = cell_mm
+        self.cell_mm = cell_mm          # None -> derived from map size in set_map_size()
+        self.map_cells = map_cells      # requested NxN resolution (used when cell_mm is None)
         self.map_cells_x = map_cells
         self.map_cells_y = map_cells
 
     def set_map_size(self, width_mm: int, height_mm: int) -> None:
+        if self.cell_mm is None:
+            # Derive square cells from the requested NxN grid resolution.
+            self.cell_mm = max(1, width_mm // self.map_cells)
         if width_mm % self.cell_mm or height_mm % self.cell_mm:
             print(f"  ⚠ cell_mm={self.cell_mm} does not divide map "
                   f"{width_mm}x{height_mm} mm — grid will be truncated.")
@@ -304,9 +309,10 @@ def main() -> None:
     parser.add_argument("--steps", type=int, default=DEFAULT_STEPS,
                         help=f"Number of PIBT steps (default: {DEFAULT_STEPS})")
     parser.add_argument("--cell-mm", type=int, default=DEFAULT_CELL_MM,
-                        help=f"Cell size in mm (default: {DEFAULT_CELL_MM})")
+                        help="Cell size in mm (default: derived from map_size / --map-cells)")
     parser.add_argument("--map-cells", type=int, default=DEFAULT_MAP_CELLS,
-                        help=f"Fallback NxN grid dimension (default: {DEFAULT_MAP_CELLS})")
+                        help=f"Grid resolution NxN (default: {DEFAULT_MAP_CELLS}; "
+                             f"8 -> 250 mm cells, 5 -> 400 mm on a 2000x2000 map)")
     parser.add_argument("--threshold", type=int, default=DEFAULT_THRESHOLD,
                         help=f"Arrival radius per cell in mm (default: {DEFAULT_THRESHOLD})")
     parser.add_argument("--step-timeout", type=float, default=DEFAULT_STEP_TIMEOUT,
@@ -346,7 +352,7 @@ def main() -> None:
         print(f"  {addr[:8]}...  pos=({p.get('x', '?'):.0f}, {p.get('y', '?'):.0f}) mm  cell={cell}")
 
     print(f"\nPIBT planning — grid {gsm.map_cells_x}x{gsm.map_cells_y} cells "
-          f"({width_mm}x{height_mm} mm, cell={args.cell_mm} mm), {args.steps} steps max...")
+          f"({width_mm}x{height_mm} mm, cell={gsm.cell_mm} mm), {args.steps} steps max...")
 
     sim, agents, addresses, goals_by_agent, goals_by_address = build_pibt(
         grid_state, gsm.map_cells_x, gsm.map_cells_y, rng
