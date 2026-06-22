@@ -3,6 +3,9 @@
 PIBT (Priority Inheritance with Backtracking) demos for a [DotBot][pydotbot-doc] swarm —
 collision-free multi-robot navigation on a discrete grid.
 
+📖 **Documentation:** a three-level reproduction guide (algorithm → simulator → real
+hardware) lives under [`docs/`](docs/index.md) and builds as a MkDocs site (`mkdocs serve`).
+
 ## Contents
 
 | Path | Description |

@@ -15,3 +15,6 @@ venv/
 *.fdb_latexmk
 *.out
 *.synctex.gz
+
+# MkDocs build output
+site/

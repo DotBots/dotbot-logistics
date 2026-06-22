@@ -1,0 +1,50 @@
+site_name: DotBot Logistics
+site_description: >-
+  PIBT collision-free multi-robot navigation for a DotBot swarm — a three-level,
+  reproducible guide from the bare algorithm to real hardware.
+repo_url: https://github.com/DotBots/dotbot-logistics
+repo_name: DotBots/dotbot-logistics
+
+docs_dir: docs
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - content.code.annotate
+    - toc.follow
+  palette:
+    - scheme: default
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - scheme: slate
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.details
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Level 0 — Run a PIBT: level-0-algorithm.md
+  - Level 1 — Fake bots: level-1-simulator.md
+  - Level 2 — Real bots: level-2-real.md
+  - Contributing: contributing.md
+  - Appendix: appendix.md
