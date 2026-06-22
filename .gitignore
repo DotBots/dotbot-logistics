@@ -1,5 +1,17 @@
+# Python
 __pycache__/
+**/__pycache__/
 *.pyc
 *.pyo
 .env
 venv/
+
+# Runtime / logs
+*.log
+
+# LaTeX build artifacts
+*.aux
+*.fls
+*.fdb_latexmk
+*.out
+*.synctex.gz
