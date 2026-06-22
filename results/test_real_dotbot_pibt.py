@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
 """
-test_real_dotbot_pibt_3bots_5runs.py — Batch test: 3 bots, 5 runs.
+test_real_dotbot_pibt.py — Parametrised batch test: N bots, M runs.
 
-Runs PIBT step-by-step on 3 real DotBots for 5 independent trials and
-records per-run metrics and a summary to results/.
+Runs PIBT step-by-step on N real DotBots for M independent trials and records
+per-run metrics and a summary to results/ (raw logs under results/raw_logs/).
+
+This single script replaces the former per-N family
+(test_real_dotbot_pibt_2bots_5runs.py … _16bots_5runs.py), which were
+byte-identical except for the agent count.
+
+Usage:
+    python test_real_dotbot_pibt.py --bots 8            # 8 bots, 5 runs (default)
+    python test_real_dotbot_pibt.py --bots 4 --runs 10  # 4 bots, 10 runs
 """
 
 import sys
@@ -11,6 +19,7 @@ import os
 import math
 import time
 import random
+import argparse
 import io as _io
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -22,10 +31,10 @@ from algo.pibt import PIBT
 
 import l1_metrics
 
-# ── Batch parameters ───────────────────────────────────────────────────────────
-NUM_AGENTS  = 3
+# ── Batch parameters (set from CLI in main) ─────────────────────────────────────
+NUM_AGENTS  = 8
 NUM_RUNS    = 5
-SCRIPT_NAME = "test_real_dotbot_pibt_3bots_5runs"
+SCRIPT_NAME = "test_real_dotbot_pibt_8bots_5runs"
 
 # ── Experiment parameters ──────────────────────────────────────────────────────
 BASE_URL     = "http://localhost:8000"
@@ -39,6 +48,7 @@ RNG_SEED     = 0     # base seed; per-run seed = RNG_SEED + run_id (reproducible
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 RESULTS_DIR = os.path.dirname(os.path.abspath(__file__))
+RAW_LOGS_DIR = os.path.join(RESULTS_DIR, "raw_logs")
 
 
 # ── Tee: mirror stdout to log buffer ──────────────────────────────────────────
@@ -432,10 +442,26 @@ def _run_batch():
 
 
 # ── Entry point ────────────────────────────────────────────────────────────────
+def _parse_args():
+    p = argparse.ArgumentParser(description=__doc__,
+                                formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--bots", type=int, default=8,
+                   help="number of DotBots in the batch (default: 8)")
+    p.add_argument("--runs", type=int, default=5,
+                   help="number of independent runs (default: 5)")
+    return p.parse_args()
+
+
 def main():
-    os.makedirs(RESULTS_DIR, exist_ok=True)
+    global NUM_AGENTS, NUM_RUNS, SCRIPT_NAME
+    args = _parse_args()
+    NUM_AGENTS  = args.bots
+    NUM_RUNS    = args.runs
+    SCRIPT_NAME = f"test_real_dotbot_pibt_{NUM_AGENTS}bots_{NUM_RUNS}runs"
+
+    os.makedirs(RAW_LOGS_DIR, exist_ok=True)
     timestamp   = time.strftime("%Y%m%d_%H%M%S")
-    log_file    = os.path.join(RESULTS_DIR, f"{SCRIPT_NAME}_{timestamp}.txt")
+    log_file    = os.path.join(RAW_LOGS_DIR, f"{SCRIPT_NAME}_{timestamp}.txt")
     log_buf     = _io.StringIO()
     real_stdout = sys.stdout
     sys.stdout  = _Tee(real_stdout, log_buf)
