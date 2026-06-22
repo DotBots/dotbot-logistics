@@ -1,6 +1,9 @@
 # This file is used to create and configure simulated DotBot instances for the simulator.
+# Default init state: 5x5 grid (cell=400mm, map=2000x2000mm).
 # Launch with:
 #   dotbot run simulator --map-size 2000x2000 --simulator-init-state simulator_init_state.toml
+# Pair with: python sim_dotbot_pibt.py            (default --map-cells 5)
+# For the 8x8 layout, use simulator_init_state_8x8.toml with --map-cells 8.
 
 [network]
 pdr = 100
@@ -9,76 +12,76 @@ downlink_pdr = 100
 slot_duration_ms = 1.236
 mqtt_latency_ms = 0.0
 
-# 10 bots — positions = centres des cases de la grille 8x8 (cell=250mm, map=2000x2000mm)
-# case (gx, gy) → pos_x = gx*250+125, pos_y = gy*250+125
+# 10 bots — positions = centres des cases de la grille 5x5 (cell=400mm, map=2000x2000mm)
+# case (gx, gy) → pos_x = gx*400+200, pos_y = gy*400+200
 
 [[dotbots]]
 address = "BADCAFE111111111"    # agent 0 — case (0,0)
 calibrated = 0xff
-pos_x = 125
-pos_y = 125
+pos_x = 200
+pos_y = 200
 direction = 0
 network_mode = "default"
 
 [[dotbots]]
 address = "DEADBEEF22222222"    # agent 1 — case (2,1)
 calibrated = 0xff
-pos_x = 625
-pos_y = 375
+pos_x = 1000
+pos_y = 600
 direction = 90
 
 [[dotbots]]
 address = "B0B0F00D33333333"    # agent 2 — case (4,3)
 calibrated = 0xff
-pos_x = 1125
-pos_y = 875
+pos_x = 1800
+pos_y = 1400
 direction = 180
 
 [[dotbots]]
 address = "BADC0DE444444444"    # agent 3 — case (4,0)
 calibrated = 0xff
-pos_x = 1125
-pos_y = 125
+pos_x = 1800
+pos_y = 200
 direction = 270
 
 [[dotbots]]
 address = "C0FFEE5555555555"    # agent 4 — case (1,0)
 calibrated = 0xff
-pos_x = 375
-pos_y = 125
+pos_x = 600
+pos_y = 200
 direction = 0
 
 [[dotbots]]
 address = "FACADE6666666666"    # agent 5 — case (4,4)
 calibrated = 0xff
-pos_x = 1125
-pos_y = 1125
+pos_x = 1800
+pos_y = 1800
 direction = 45
 
 [[dotbots]]
 address = "ABCDEF7777777777"    # agent 6 — case (4,2)
 calibrated = 0xff
-pos_x = 1125
-pos_y = 625
+pos_x = 1800
+pos_y = 1000
 direction = 135
 
 [[dotbots]]
 address = "BABE888888888888"    # agent 7 — case (3,4)
 calibrated = 0xff
-pos_x = 875
-pos_y = 1125
+pos_x = 1400
+pos_y = 1800
 direction = 225
 
 [[dotbots]]
 address = "CAFE999999999999"    # agent 8 — case (3,0)
 calibrated = 0xff
-pos_x = 875
-pos_y = 125
+pos_x = 1400
+pos_y = 200
 direction = 315
 
 [[dotbots]]
 address = "D00DAAAAAAAAAAAA"    # agent 9 — case (3,3)
 calibrated = 0xff
-pos_x = 875
-pos_y = 875
+pos_x = 1400
+pos_y = 1400
 direction = 180
