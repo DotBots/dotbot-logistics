@@ -1,221 +1,128 @@
-#!/usr/bin/env python3
 """
-sim_pibt.py — L0 benchmark: PIBT algorithm sweep, no pygame, no hardware.
+sim_pibt.py — Interactive PIBT demo on a 10x10 grid.
 
-Sweeps grid resolution × N × 30 seeds and writes per-instance rows to
-l0_results.csv, then prints a breaking-point summary.
+Controls:
+    Space     pause / play
+    ->        step forward
+    <-        step back
+    Q / Esc   quit
 
-Grids (2000 × 2000 mm arena):
-    4×4  — 500 mm cells
-    5×5  — 400 mm cells
-    8×8  — 250 mm cells
+The footer bar shows the priority order, agent moves,
+and priority inheritances at each step.
 
-Usage:
-    python sim_pibt.py                  # full sweep, 30 seeds
-    python sim_pibt.py --seeds 5        # quick smoke-test
-    python sim_pibt.py --out my.csv     # custom output file
+────────────────────────────────────────────────────────────────
+To build your own demo:
+
+  1. Choose a Coordinator (PIBT, RandomWalkCoordinator, or your own).
+  2. Create agents BEFORE the coordinator if it uses Agent objects
+     as dict keys (as PIBT does for goals and priorities).
+  3. Build the simulation: Simulation(grid, coordinator=my_algo).
+  4. Add agents and entities via sim.add_agent() / sim.add_object().
+  5. Launch with:
+       PIBTInteractiveRenderer(sim, pibt).run(steps=25)  # with navigation
+       PIBTRenderer(sim, pibt).run(steps=30, pause=0.3)  # read-only
+       Renderer(sim).run(steps=30, pause=0.3)            # no PIBT rendering
+
+To add your own algorithm:
+  -> see simulation/algo/random_walk.py as a minimal example.
+  -> your class must inherit from Coordinator and implement plan().
+────────────────────────────────────────────────────────────────
 """
 
 import sys
 import os
-import time
-import random
-import csv
-import argparse
-from collections import defaultdict
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "simulation"))
+DEBUG = "-d" in sys.argv
+if DEBUG:
+    os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 
-from core import Simulation, Agent, Grid, Position
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "simulation"))
+
+from core import Simulation, Agent, Grid, Position, Objective, WorldEntity
 from algo.pibt import PIBT
+if DEBUG:
+    # Direct import — avoids loading pygame via client/__init__.py
+    from client.pibt_interactive_renderer import PIBTInteractiveRenderer
+else:
+    from client import PIBTInteractiveRenderer
 
-# ── Defaults ──────────────────────────────────────────────────────────────────
+# ── 1. Grid ───────────────────────────────────────────────────────────────────
 
-GRIDS = [
-    (4, 4),
-    (5, 5),
-    (8, 8),
+grid = Grid(width=5, height=5)
+
+# ── 2. Agents — created before PIBT because they are used as keys in goals/priorities ─
+
+start_positions = [
+    Position(0, 0), Position(2, 1), Position(4, 3), Position(4, 0),
+    Position(1, 0), Position(4, 4), Position(4, 2), Position(3, 4),
+    Position(3, 0), Position(3, 3),
 ]
-ARENA_MM  = 2000
-MAX_STEPS = 100
-N_SEEDS   = 30
-OUTPUT    = "l0_results.csv"
+agents = [Agent(agent_id=i, position=pos) for i, pos in enumerate(start_positions)]
 
-# ── Scenario generator ────────────────────────────────────────────────────────
+# ── 3. PIBT goals: Agent -> target Position ───────────────────────────────────
+#    Modify these associations to change where each agent wants to go.
 
-def make_scenario(grid_w: int, grid_h: int, n: int, seed: int):
-    """Return (starts, goals) — lists of (x, y) tuples, seeded and reproducible.
+goals = {
+    agents[0]: Position(4, 4),
+    agents[1]: Position(4, 1),
+    agents[2]: Position(0, 4),
+    agents[3]: Position(0, 0),
+    agents[4]: Position(3, 4),
+    agents[5]: Position(4, 3),
+    agents[6]: Position(2, 2),
+    agents[7]: Position(0, 2),
+    agents[8]: Position(1, 1),
+    agents[9]: Position(4, 2),
+}
 
-    Constraints (matching the MAPF benchmark convention):
-      - starts are distinct among themselves
-      - goals  are distinct among themselves
-      - a start CAN equal another agent's goal (allows N up to grid_w*grid_h)
-    """
-    rng = random.Random(seed)
-    cells = [(x, y) for x in range(grid_w) for y in range(grid_h)]
-    starts = rng.sample(cells, n)
-    goals  = rng.sample(cells, n)
-    return starts, goals
+# ── 4. Initial priorities — higher value means the agent is served first ──────
+#    Optional: if omitted, PIBT assigns priorities by insertion order.
+#    Can be changed here or during the simulation via pibt.priorities[agent] = x.
 
-# ── Single instance ───────────────────────────────────────────────────────────
+initial_priorities = {
+    agents[0]: 20.0,
+    agents[1]: 8.0,
+    agents[2]: 7.0,
+    agents[3]: 6.0,
+    agents[4]: 5.0,
+    agents[5]: 4.0,
+    agents[6]: 3.0,
+    agents[7]: 2.0,
+    agents[8]: 1.0,
+    agents[9]: 0.0,
+}
 
-def _manhattan(a: Position, b: Position) -> int:
-    return abs(a.x - b.x) + abs(a.y - b.y)
+# ── 5. Coordinator and simulation ─────────────────────────────────────────────
+#    To test another algorithm: replace PIBT with your Coordinator
+#    and use PIBTRenderer(sim, pibt) if applicable.
 
-def run_instance(gw: int, gh: int, n: int, seed: int) -> dict:
-    starts, goals_pos = make_scenario(gw, gh, n, seed)
+pibt = PIBT(goals=goals, initial_priorities=initial_priorities)
+sim = Simulation(grid, coordinator=pibt)
 
-    agents   = [Agent(i, Position(*s)) for i, s in enumerate(starts)]
-    goal_map = {agents[i]: Position(*goals_pos[i]) for i in range(n)}
-    optimal  = [_manhattan(agents[i].position, goal_map[agents[i]]) for i in range(n)]
+for agent in agents:
+    sim.add_agent(agent)
 
-    pibt = PIBT(goals=goal_map)
-    sim  = Simulation(Grid(gw, gh), coordinator=pibt)
-    for a in agents:
-        sim.add_agent(a)
+# ── 6. World entities ─────────────────────────────────────────────────────────
 
-    arrival     = {i: None for i in range(n)}
-    plan_ms_sum = 0.0
+# Free objective (any agent can collect it — yellow diamond)
+sim.add_object(Objective(entity_id=0, position=Position(3, 3)))
+"""
+# Reserved objective: only agents[0] can collect it
+sim.add_object(Objective(entity_id=1, position=Position(8, 1), owner=agents[0]))
 
-    for t in range(1, MAX_STEPS + 1):
-        t0 = time.perf_counter()
-        sim.step()
-        plan_ms_sum += (time.perf_counter() - t0) * 1e3
+# Obstacles: WorldEntity with blocks_movement=True — no subclass needed
+sim.add_object(WorldEntity(entity_id=2, position=Position(5, 5), blocks_movement=True))
+sim.add_object(WorldEntity(entity_id=3, position=Position(5, 6), blocks_movement=True))
 
-        for i, a in enumerate(agents):
-            if arrival[i] is None and a.position == goal_map[a]:
-                arrival[i] = t
+# Deferred objective: only appears on the grid from step 2 onwards
+sim.add_object(Objective(entity_id=4, position=Position(1, 8), appear_at=2))
+"""
+# ── 7. Launch ─────────────────────────────────────────────────────────────────
+#    python sim_pibt.py       -> interactive window (<- -> Space Q)
+#    python sim_pibt.py -d    -> debug mode: terminal print, no pygame
 
-    arrived      = sum(1 for v in arrival.values() if v is not None)
-    success_rate = arrived / n
-    makespan     = max((v for v in arrival.values() if v is not None), default=None)
-    flowtime     = sum(v for v in arrival.values() if v is not None) if arrived else None
-    deadlocks    = n - arrived
-    mean_plan_ms = plan_ms_sum / MAX_STEPS
-
-    detours = []
-    for i in range(n):
-        if arrival[i] is not None:
-            detours.append(arrival[i] / optimal[i] if optimal[i] > 0 else 1.0)
-    mean_detour = sum(detours) / len(detours) if detours else None
-
-    return {
-        "success_rate": success_rate,
-        "arrived":      arrived,
-        "makespan":     makespan,
-        "flowtime":     flowtime,
-        "mean_detour":  mean_detour,
-        "mean_plan_ms": mean_plan_ms,
-        "deadlocks":    deadlocks,
-    }
-
-# ── Sweep ─────────────────────────────────────────────────────────────────────
-
-def run_sweep(seeds: list[int], output: str) -> None:
-    rows = []
-
-    for (gw, gh) in GRIDS:
-        cells   = gw * gh
-        cell_mm = ARENA_MM // gw
-        print(f"\n=== Grid {gw}×{gh}  ({cell_mm} mm cells,  {cells} cells) ===")
-
-        # starts and goals are independently sampled → N_max = cells
-        n_max = cells
-        for n in range(2, n_max + 1):
-            seed_results = []
-            for seed in seeds:
-                try:
-                    r = run_instance(gw, gh, n, seed)
-                    seed_results.append(r)
-                    rows.append({
-                        "grid_w":      gw,
-                        "grid_h":      gh,
-                        "cell_mm":     cell_mm,
-                        "n_agents":    n,
-                        "occupancy":   round(n / cells, 4),
-                        "seed":        seed,
-                        "success_rate": r["success_rate"],
-                        "arrived":     r["arrived"],
-                        "makespan":    r["makespan"],
-                        "flowtime":    r["flowtime"],
-                        "mean_detour": r["mean_detour"],
-                        "mean_plan_ms": r["mean_plan_ms"],
-                        "deadlocks":   r["deadlocks"],
-                    })
-                except Exception as exc:
-                    print(f"  [{gw}×{gh}] N={n} seed={seed} ERROR: {exc}")
-
-            if seed_results:
-                mean_sr  = sum(r["success_rate"] for r in seed_results) / len(seed_results)
-                mean_dl  = sum(r["deadlocks"]    for r in seed_results) / len(seed_results)
-                rho      = n / cells
-                print(f"  N={n:2d}  ρ={rho:.2f}  success={mean_sr*100:5.1f}%  "
-                      f"deadlocks_mean={mean_dl:.1f}")
-
-    # Write CSV
-    if rows:
-        fieldnames = [
-            "grid_w", "grid_h", "cell_mm", "n_agents", "occupancy", "seed",
-            "success_rate", "arrived", "makespan", "flowtime",
-            "mean_detour", "mean_plan_ms", "deadlocks",
-        ]
-        with open(output, "w", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerows(rows)
-        print(f"\nResults written to {output}  ({len(rows)} rows)")
-
-    _print_breaking_points(rows)
-
-# ── Breaking-point summary ────────────────────────────────────────────────────
-
-def _print_breaking_points(rows: list[dict]) -> None:
-    print("\n=== Breaking-point summary ===")
-
-    grouped: dict[tuple, list] = defaultdict(list)
-    for row in rows:
-        grouped[(row["grid_w"], row["grid_h"], row["n_agents"])].append(row)
-
-    for (gw, gh) in GRIDS:
-        cells = gw * gh
-        n_star          = None  # largest N with 100 % success across all seeds
-        n_50            = None  # first N where mean success < 50 %
-        deadlock_onset  = None  # first N with any non-arriving agent
-
-        n_max = cells // 2
-        for n in range(2, n_max + 1):
-            key = (gw, gh, n)
-            if key not in grouped:
-                continue
-            seed_rows = grouped[key]
-            mean_sr   = sum(r["success_rate"] for r in seed_rows) / len(seed_rows)
-            any_dl    = any(r["deadlocks"] > 0 for r in seed_rows)
-
-            if mean_sr == 1.0:
-                n_star = n
-            if n_50 is None and mean_sr < 0.5:
-                n_50 = n
-            if deadlock_onset is None and any_dl:
-                deadlock_onset = n
-
-        rho_star = round(n_star / cells, 3) if n_star is not None else None
-        print(
-            f"  {gw}×{gh}:  N*={n_star}  ρ*={rho_star}  "
-            f"N₅₀={n_50}  deadlock_onset={deadlock_onset}"
-        )
-
-# ── Entry point ───────────────────────────────────────────────────────────────
-
-def _parse_args():
-    parser = argparse.ArgumentParser(description="L0 PIBT benchmark sweep")
-    parser.add_argument("--seeds", type=int, default=N_SEEDS,
-                        help=f"number of seeds per (grid, N) cell (default: {N_SEEDS})")
-    parser.add_argument("--out",   type=str, default=OUTPUT,
-                        help=f"output CSV file (default: {OUTPUT})")
-    return parser.parse_args()
-
-if __name__ == "__main__":
-    args  = _parse_args()
-    seeds = list(range(args.seeds))
-    print(f"L0 sweep — {len(GRIDS)} grids, seeds 0…{args.seeds-1}, max_steps={MAX_STEPS}")
-    run_sweep(seeds, args.out)
+renderer = PIBTInteractiveRenderer(sim, pibt)
+if DEBUG:
+    renderer.run_debug(steps=20)
+else:
+    renderer.run(steps=30, auto_ms=500)
