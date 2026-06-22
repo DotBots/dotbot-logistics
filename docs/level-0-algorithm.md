@@ -46,14 +46,14 @@ the top of `simulation/demo.py` for the renderer options.
 
 ## Measure it — the headless benchmark
 
-To turn "it works" into numbers, `bench_pibt.py` runs PIBT with **no pygame and no
+To turn "it works" into numbers, `sim_pibt.py` runs PIBT with **no pygame and no
 hardware**, sweeping grid resolution × number of robots × random seeds and writing one CSV
 row per instance.
 
 ```bash
-python bench_pibt.py                  # full sweep, 30 seeds
-python bench_pibt.py --seeds 5        # quick smoke-test
-python bench_pibt.py --out my.csv     # custom output file
+python sim_pibt.py                  # full sweep, 30 seeds
+python sim_pibt.py --seeds 5        # quick smoke-test
+python sim_pibt.py --out my.csv     # custom output file
 ```
 
 The sweep fixes a **2000 × 2000 mm arena** and varies the cell size, which is the core

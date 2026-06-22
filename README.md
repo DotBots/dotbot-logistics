@@ -13,7 +13,7 @@ hardware) lives under [`docs/`](docs/index.md) and builds as a MkDocs site (`mkd
 | `sim_dotbot_pibt.py` | Simulator — sends all waypoints at once. Each bot follows its path at its own pace. |
 | `real_dotbot_pibt.py` | Real hardware — one waypoint at a time, with a sync barrier between each step. Keeps PIBT's collision guarantee on async hardware. |
 | `draft_real_dotbot_pibt.py` | Draft real-hardware variant (250 mm cells, under evaluation). |
-| `bench_pibt.py` | L0 benchmark — headless PIBT sweep over grid resolution × N × seeds. |
+| `sim_pibt.py` | L0 benchmark — headless PIBT sweep over grid resolution × N × seeds. |
 | `simulation/` | Standalone PIBT simulation engine (`core/`, `algo/pibt.py`). |
 | `test_real_dotbot_pibt.py` | Parametrised batch test (`--bots N --runs M`) writing L1 metrics. |
 | `log/` | Experiment outputs — `raw_logs/` and metrics CSVs. |

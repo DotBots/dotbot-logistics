@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-bench_pibt.py — L0 benchmark: PIBT algorithm sweep, no pygame, no hardware.
+sim_pibt.py — L0 benchmark: PIBT algorithm sweep, no pygame, no hardware.
 
 Sweeps grid resolution × N × 30 seeds and writes per-instance rows to
 l0_results.csv, then prints a breaking-point summary.
@@ -11,9 +11,9 @@ Grids (2000 × 2000 mm arena):
     8×8  — 250 mm cells
 
 Usage:
-    python bench_pibt.py                  # full sweep, 30 seeds
-    python bench_pibt.py --seeds 5        # quick smoke-test
-    python bench_pibt.py --out my.csv     # custom output file
+    python sim_pibt.py                  # full sweep, 30 seeds
+    python sim_pibt.py --seeds 5        # quick smoke-test
+    python sim_pibt.py --out my.csv     # custom output file
 """
 
 import sys
