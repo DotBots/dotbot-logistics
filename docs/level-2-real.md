@@ -85,8 +85,8 @@ python real_dotbot_pibt.py --seed 1 --steps 20    # real run
 | `--min-bots` | 2 | Localised bots required before starting |
 | `--steps` | 30 | Maximum PIBT steps |
 | `--seed` | random | Reproducible random goals |
-| `--map-cells` | 8 | Fallback N×N grid if the API `map_size` is unavailable |
-| `--cell-mm` | 250 | Cell size in mm (centres at `gx*cell_mm + cell_mm//2`) |
+| `--map-cells` | 5 | Grid resolution N×N (5 → 400 mm cells, 8 → 250 mm on a 2000×2000 map) |
+| `--cell-mm` | derived | Cell size in mm (overrides `--map-cells`; centres at `gx*cell_mm + cell_mm//2`) |
 
 ## Reproducing the experiments
 

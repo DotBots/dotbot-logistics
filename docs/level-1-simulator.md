@@ -17,7 +17,8 @@ dotbot run simulator \
 ```
 
 This serves the web UI at <http://localhost:8000/PyDotBot/> and creates the simulated bots
-defined in `simulator_init_state.toml` (10 bots placed on grid-cell centres). Open the UI
+defined in `simulator_init_state.toml` (10 bots on the centres of a 5×5 grid, cell = 400 mm;
+for the 8×8 layout use `simulator_init_state_8x8.toml` with `--map-cells 8`). Open the UI
 to watch them on the map.
 
 !!! warning "Option name"

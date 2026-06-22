@@ -92,7 +92,7 @@ pre-computed while the bots travel.
 python sim_dotbot_pibt.py              # synchronised step-by-step run
 python sim_dotbot_pibt.py --dry-run    # print targets without sending or waiting
 python sim_dotbot_pibt.py --steps 40   # cap the number of PIBT steps
-python sim_dotbot_pibt.py --map-cells 5 # 5x5 grid (400 mm cells); default is 8x8 (250 mm)
+python sim_dotbot_pibt.py --map-cells 8 # 8x8 grid (250 mm cells); default is 5x5 (400 mm)
 python sim_dotbot_pibt.py --seed 42    # reproducible random goals
 ```
 
@@ -100,7 +100,7 @@ python sim_dotbot_pibt.py --seed 42    # reproducible random goals
 |--------|---------|-------------|
 | `--dry-run` | — | Print step-by-step targets without sending or waiting |
 | `--steps N` | `30` | Number of PIBT steps |
-| `--map-cells N` | `8` | Grid resolution N×N (8 → 250 mm cells, 5 → 400 mm on a 2000×2000 map) |
+| `--map-cells N` | `5` | Grid resolution N×N (5 → 400 mm cells, 8 → 250 mm on a 2000×2000 map) |
 | `--cell-mm N` | derived | Cell size in mm (overrides `--map-cells`; default: `map_size / --map-cells`) |
 | `--threshold N` | `100` | Arrival radius per cell in mm |
 | `--step-timeout S` | `8.0` | Max wait (s) per step |
@@ -130,8 +130,8 @@ python real_dotbot_pibt.py --min-bots 3
 |--------|---------|-------------|
 | `--dry-run` | — | Print step-by-step targets without sending or waiting |
 | `--steps N` | `30` | Number of PIBT steps |
-| `--cell-mm N` | `250` | Cell size in mm |
-| `--map-cells N` | `8` | Fallback N×N grid (normally derived from the API `map_size`) |
+| `--map-cells N` | `5` | Grid resolution N×N (5 → 400 mm cells, 8 → 250 mm on a 2000×2000 map) |
+| `--cell-mm N` | derived | Cell size in mm (overrides `--map-cells`; default: `map_size / --map-cells`) |
 | `--threshold N` | `100` | Arrival radius per cell in mm |
 | `--step-timeout S` | `8.0` | Max wait (s) per step; beyond it the bot is logged and skipped |
 | `--settle S` | `0.3` | Pause (s) after arrival per step |
@@ -167,7 +167,8 @@ dotbot run simulator \
 ```
 
 > `simulator_init_state.toml` defines the initial bot positions (10 bots on the centres of
-> an 8×8 grid, cell = 250 mm, map = 2000×2000 mm).
+> a 5×5 grid, cell = 400 mm, map = 2000×2000 mm). For the 8×8 layout use
+> `simulator_init_state_8x8.toml` together with `--map-cells 8`.
 > See the [pydotbot documentation][pydotbot-doc] for an example.
 
 ### 2. Run the simulator demo
@@ -194,7 +195,8 @@ cell (gx, gy)  →  centre mm = (gx×cell_mm + cell_mm//2, gy×cell_mm + cell_mm
 pos (x, y) mm  →  cell      = (int(x/cell_mm), int(y/cell_mm))
 ```
 
-With `cell_mm=250` and a `2000×2000 mm` map: 8×8 grid.
+With the default `--map-cells 5` and a `2000×2000 mm` map: `cell_mm=400`, 5×5 grid
+(`--map-cells 8` gives `cell_mm=250`, 8×8).
 
 ## sim vs real
 
