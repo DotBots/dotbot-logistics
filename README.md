@@ -20,10 +20,6 @@ hardware) lives under [`docs/`](docs/index.md) and builds as a MkDocs site (`mkd
 | `log/` | — | Experiment outputs — `raw_logs/` and metrics CSVs. |
 | `docs/` | — | Documentation — roadmap, experiment reports, Inria hand-offs. |
 
-### Simulation architecture
-
-![Class diagram](simulation/diagrammes/simulation_class_diagram.png)
-
 ## Installation
 
 ```bash
