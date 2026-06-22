@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-test_real_dotbot_pibt.py — Parametrised batch test: N bots, M runs.
+real_dotbot_pibt_batch.py — Parametrised batch test: N bots, M runs.
 
 Runs PIBT step-by-step on N real DotBots for M independent trials and records
 per-run metrics and a summary to log/ (raw logs under log/raw_logs/).
@@ -10,8 +10,8 @@ This single script replaces the former per-N family
 byte-identical except for the agent count.
 
 Usage:
-    python test_real_dotbot_pibt.py --bots 8            # 8 bots, 5 runs (default)
-    python test_real_dotbot_pibt.py --bots 4 --runs 10  # 4 bots, 10 runs
+    python real_dotbot_pibt_batch.py --bots 8            # 8 bots, 5 runs (default)
+    python real_dotbot_pibt_batch.py --bots 4 --runs 10  # 4 bots, 10 runs
 """
 
 import sys
@@ -34,7 +34,7 @@ import run_metrics
 # ── Batch parameters (set from CLI in main) ─────────────────────────────────────
 NUM_AGENTS  = 8
 NUM_RUNS    = 5
-SCRIPT_NAME = "test_real_dotbot_pibt_8bots_5runs"
+SCRIPT_NAME = "real_dotbot_pibt_batch_8bots_5runs"
 
 # ── Experiment parameters ──────────────────────────────────────────────────────
 BASE_URL     = "http://localhost:8000"
@@ -457,7 +457,7 @@ def main():
     args = _parse_args()
     NUM_AGENTS  = args.bots
     NUM_RUNS    = args.runs
-    SCRIPT_NAME = f"test_real_dotbot_pibt_{NUM_AGENTS}bots_{NUM_RUNS}runs"
+    SCRIPT_NAME = f"real_dotbot_pibt_batch_{NUM_AGENTS}bots_{NUM_RUNS}runs"
 
     os.makedirs(RAW_LOGS_DIR, exist_ok=True)
     timestamp   = time.strftime("%Y%m%d_%H%M%S")

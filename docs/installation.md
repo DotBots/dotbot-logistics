@@ -48,7 +48,7 @@ run the engine on its own, it has its own `simulation/requirements.txt`.
 | `sim_pibt.py` | Level 0 | Headless PIBT benchmark sweep. |
 | `sim_dotbot_pibt.py` | Level 1 | Drives the DotBot **simulator** through the controller API. |
 | `real_dotbot_pibt.py` | Level 2 | Drives **real** DotBots, step-by-step with a sync barrier. |
-| `test_real_dotbot_pibt.py` | Level 2 | Parametrised batch test harness (`--bots N`). |
+| `real_dotbot_pibt_batch.py` | Level 2 | Parametrised batch test harness (`--bots N`). |
 | `simulator_init_state.toml` | Levels 1–2 | Initial simulated-bot positions for the controller. |
 | `mosquitto.conf` | Level 2 | Local MQTT broker config. |
 | `dotbot.toml` | Level 2 | Controller connection / swarm-id config. |

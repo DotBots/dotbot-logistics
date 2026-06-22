@@ -2,7 +2,7 @@
 """
 run_metrics.py — Shared CSV logging for the real-hardware test harness.
 
-Imported by test_real_dotbot_pibt.py. Appends one row per run to l1_per_run.csv
+Imported by real_dotbot_pibt_batch.py. Appends one row per run to l1_per_run.csv
 and rewrites the per-(grid, N) aggregate in l1_summary.csv (both under log/).
 The schema mirrors the headless benchmark columns so a simulated sweep and a
 hardware run can be joined directly to measure the plan-to-real gap.
