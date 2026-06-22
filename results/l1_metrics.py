@@ -24,7 +24,7 @@ PER_RUN_FIELDS = [
     "date", "script_name",
     "grid_w", "grid_h", "cell_mm", "n_agents", "occupancy", "seed", "run_id",
     "success_rate", "arrived", "total_bots", "all_reached",
-    "steps_taken", "total_time_s", "step_timeouts",
+    "steps_taken", "total_time_s", "step_timeouts", "makespan",
     "throughput_per_min", "mean_overshoot_mm", "max_overshoot_mm",
     "total_conflict_moves", "total_free_moves", "conflict_ratio",
     "mean_step_time_free_s", "mean_step_time_conflict_s",
@@ -33,7 +33,7 @@ PER_RUN_FIELDS = [
 SUMMARY_FIELDS = [
     "script_name", "grid_w", "grid_h", "cell_mm", "n_agents", "occupancy",
     "num_runs", "success_rate_mean", "success_rate_ci95",
-    "avg_steps", "avg_time_s", "avg_overshoot_mm",
+    "avg_steps", "avg_makespan", "avg_time_s", "avg_overshoot_mm",
     "timeout_rate", "avg_throughput_per_min",
     "avg_conflict_ratio", "avg_mean_step_time_free_s", "avg_mean_step_time_conflict_s",
 ]
@@ -80,7 +80,8 @@ def write_summary(results_dir):
         w.writeheader()
         for (script, gw, gh, cell, n, rho), rows in sorted(groups.items()):
             sr = [float(r["success_rate"]) for r in rows]
-            steps = [float(r["steps_taken"]) for r in rows]
+            steps    = [float(r["steps_taken"]) for r in rows]
+            makespan = [float(r.get("makespan") or max(0, float(r["steps_taken"]) - float(r["step_timeouts"]))) for r in rows]
             tms = [float(r["total_time_s"]) for r in rows]
             ov = [float(r["mean_overshoot_mm"]) for r in rows]
             tout = [float(r["step_timeouts"]) for r in rows]
@@ -96,6 +97,7 @@ def write_summary(results_dir):
                 "success_rate_mean": round(sum(sr) / k, 4),
                 "success_rate_ci95": round(_ci95(sr), 4),
                 "avg_steps": round(sum(steps) / k, 2),
+                "avg_makespan": round(sum(makespan) / k, 2),
                 "avg_time_s": round(sum(tms) / k, 2),
                 "avg_overshoot_mm": round(sum(ov) / k, 2),
                 "timeout_rate": round(sum(tout) / k, 3),
@@ -129,6 +131,7 @@ def make_row(*, script_name, grid_w, grid_h, cell_mm, n_agents, seed, run_id,
         "steps_taken": steps_taken,
         "total_time_s": round(total_time_s, 2),
         "step_timeouts": step_timeouts,
+        "makespan": max(0, steps_taken - step_timeouts),
         "throughput_per_min": round(throughput, 2),
         "mean_overshoot_mm": round(mean_overshoot_mm, 2),
         "max_overshoot_mm": round(max_overshoot_mm, 2),

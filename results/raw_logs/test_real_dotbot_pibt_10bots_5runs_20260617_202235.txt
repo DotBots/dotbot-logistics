@@ -1,0 +1,1211 @@
+============================================================
+Batch : test_real_dotbot_pibt_10bots_5runs
+Config: 10 bots · 5 runs · 30 steps max
+Grid  : 5×5 · cell=400 mm · threshold=75 mm
+============================================================
+
+Connecting to http://localhost:8000...
+Map: 2000×2000 mm  ->  grid 5×5
+
+============================================================
+RUN 1/5  (seed=1)
+============================================================
+
+10 DotBot(s) detected:
+  15763f18...  pos=(203, 415) mm  cell=(0, 1)
+  35cd1796...  pos=(134, 986) mm  cell=(0, 2)
+  752250b2...  pos=(1897, 1379) mm  cell=(4, 3)
+  82116113...  pos=(916, 916) mm  cell=(2, 2)
+  af6ca578...  pos=(728, 252) mm  cell=(1, 0)
+  bcb3dfe7...  pos=(506, 1790) mm  cell=(1, 4)
+  c61037a3...  pos=(689, 1058) mm  cell=(1, 2)
+  d379c8b4...  pos=(478, 559) mm  cell=(1, 1)
+  d4bee461...  pos=(1773, 1749) mm  cell=(4, 4)
+  e91cbc5a...  pos=(1720, 409) mm  cell=(4, 1)
+Assigned goals:
+  15763f18...  start=(0, 1)  goal=(0, 4)
+  35cd1796...  start=(0, 2)  goal=(3, 3)
+  752250b2...  start=(4, 3)  goal=(0, 2)
+  82116113...  start=(2, 2)  goal=(1, 3)
+  af6ca578...  start=(1, 0)  goal=(0, 3)
+  bcb3dfe7...  start=(1, 4)  goal=(3, 0)
+  c61037a3...  start=(1, 2)  goal=(2, 4)
+  d379c8b4...  start=(1, 1)  goal=(3, 4)
+  d4bee461...  start=(4, 4)  goal=(2, 2)
+  e91cbc5a...  start=(4, 1)  goal=(1, 1)
+
+── Step 1 ──
+  15763f18... -> cell (0, 2) = (200, 1000) mm
+  35cd1796... -> cell (0, 3) = (200, 1400) mm
+  752250b2... -> cell (4, 2) = (1800, 1000) mm
+  82116113... -> cell (2, 3) = (1000, 1400) mm
+  af6ca578... -> cell (1, 1) = (600, 600) mm
+  bcb3dfe7... -> cell (2, 4) = (1000, 1800) mm
+  c61037a3... -> cell (1, 3) = (600, 1400) mm
+  d379c8b4... -> cell (1, 2) = (600, 1000) mm
+  d4bee461... -> cell (4, 3) = (1800, 1400) mm
+  e91cbc5a... -> cell (3, 1) = (1400, 600) mm
+    ⚠ not arrived before timeout 8.0s: 752250b2...
+
+── Step 2 ──
+  15763f18... -> cell (0, 1) = (200, 600) mm
+  35cd1796... -> cell (0, 2) = (200, 1000) mm
+  752250b2... -> cell (4, 2) = (1800, 1000) mm
+  82116113... -> cell (2, 2) = (1000, 1000) mm
+  af6ca578... -> cell (1, 2) = (600, 1000) mm
+  bcb3dfe7... -> cell (2, 3) = (1000, 1400) mm
+  c61037a3... -> cell (1, 4) = (600, 1800) mm
+  d379c8b4... -> cell (1, 3) = (600, 1400) mm
+  d4bee461... -> cell (3, 2) = (1400, 1000) mm
+  e91cbc5a... -> cell (2, 1) = (1000, 600) mm
+    ⚠ not arrived before timeout 8.0s: d4bee461..., 752250b2...
+
+── Step 3 ──
+  15763f18... -> cell (0, 2) = (200, 1000) mm
+  35cd1796... -> cell (0, 3) = (200, 1400) mm
+  752250b2... -> cell (4, 2) = (1800, 1000) mm
+  82116113... -> cell (2, 3) = (1000, 1400) mm
+  af6ca578... -> cell (1, 3) = (600, 1400) mm
+  bcb3dfe7... -> cell (3, 3) = (1400, 1400) mm
+  c61037a3... -> cell (2, 4) = (1000, 1800) mm
+  d379c8b4... -> cell (1, 4) = (600, 1800) mm
+  d4bee461... -> cell (3, 2) = (1400, 1000) mm
+  e91cbc5a... -> cell (1, 1) = (600, 600) mm
+    ⚠ not arrived before timeout 8.0s: d379c8b4..., d4bee461..., c61037a3..., 752250b2...
+
+── Step 4 ──
+  15763f18... -> cell (0, 1) = (200, 600) mm
+  35cd1796... -> cell (0, 2) = (200, 1000) mm
+  752250b2... -> cell (4, 2) = (1800, 1000) mm
+  82116113... -> cell (1, 3) = (600, 1400) mm
+  af6ca578... -> cell (0, 3) = (200, 1400) mm
+  bcb3dfe7... -> cell (3, 2) = (1400, 1000) mm
+  c61037a3... -> cell (2, 3) = (1000, 1400) mm
+  d379c8b4... -> cell (2, 4) = (1000, 1800) mm
+  d4bee461... -> cell (4, 3) = (1800, 1400) mm
+  e91cbc5a... -> cell (1, 1) = (600, 600) mm  (stationary)
+    ⚠ not arrived before timeout 8.0s: d379c8b4..., c61037a3..., 752250b2...
+
+── Step 5 ──
+  15763f18... -> cell (0, 2) = (200, 1000) mm
+  35cd1796... -> cell (0, 3) = (200, 1400) mm
+  752250b2... -> cell (4, 2) = (1800, 1000) mm
+  82116113... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  af6ca578... -> cell (0, 4) = (200, 1800) mm
+  bcb3dfe7... -> cell (3, 1) = (1400, 600) mm
+  c61037a3... -> cell (2, 3) = (1000, 1400) mm
+  d379c8b4... -> cell (2, 4) = (1000, 1800) mm
+  d4bee461... -> cell (3, 2) = (1400, 1000) mm
+  e91cbc5a... -> cell (1, 1) = (600, 600) mm  (stationary)
+    ⚠ not arrived before timeout 8.0s: d379c8b4..., d4bee461..., c61037a3..., 752250b2...
+
+── Step 6 ──
+  15763f18... -> cell (0, 1) = (200, 600) mm
+  35cd1796... -> cell (1, 3) = (600, 1400) mm
+  752250b2... -> cell (4, 2) = (1800, 1000) mm
+  82116113... -> cell (1, 2) = (600, 1000) mm
+  af6ca578... -> cell (0, 3) = (200, 1400) mm
+  bcb3dfe7... -> cell (3, 0) = (1400, 200) mm
+  c61037a3... -> cell (2, 3) = (1000, 1400) mm
+  d379c8b4... -> cell (2, 4) = (1000, 1800) mm
+  d4bee461... -> cell (3, 2) = (1400, 1000) mm
+  e91cbc5a... -> cell (1, 1) = (600, 600) mm  (stationary)
+    ⚠ not arrived before timeout 8.0s: d379c8b4..., d4bee461..., c61037a3..., 752250b2...
+
+── Step 7 ──
+  15763f18... -> cell (0, 2) = (200, 1000) mm
+  35cd1796... -> cell (2, 3) = (1000, 1400) mm
+  752250b2... -> cell (4, 2) = (1800, 1000) mm
+  82116113... -> cell (1, 3) = (600, 1400) mm
+  af6ca578... -> cell (0, 3) = (200, 1400) mm  (stationary)
+  bcb3dfe7... -> cell (3, 0) = (1400, 200) mm  (stationary)
+  c61037a3... -> cell (3, 4) = (1400, 1800) mm
+  d379c8b4... -> cell (2, 4) = (1000, 1800) mm
+  d4bee461... -> cell (3, 2) = (1400, 1000) mm
+  e91cbc5a... -> cell (1, 1) = (600, 600) mm  (stationary)
+    ⚠ not arrived before timeout 8.0s: d4bee461..., c61037a3..., 752250b2...
+
+── Step 8 ──
+  15763f18... -> cell (0, 3) = (200, 1400) mm
+  35cd1796... -> cell (3, 3) = (1400, 1400) mm
+  752250b2... -> cell (4, 2) = (1800, 1000) mm
+  82116113... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  af6ca578... -> cell (0, 4) = (200, 1800) mm
+  bcb3dfe7... -> cell (3, 0) = (1400, 200) mm  (stationary)
+  c61037a3... -> cell (2, 4) = (1000, 1800) mm  (stationary)
+  d379c8b4... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  d4bee461... -> cell (3, 2) = (1400, 1000) mm
+  e91cbc5a... -> cell (1, 1) = (600, 600) mm  (stationary)
+    ⚠ not arrived before timeout 8.0s: d379c8b4..., d4bee461..., c61037a3..., 752250b2...
+
+── Step 9 ──
+  15763f18... -> cell (0, 2) = (200, 1000) mm
+  35cd1796... -> cell (3, 3) = (1400, 1400) mm  (stationary)
+  752250b2... -> cell (4, 2) = (1800, 1000) mm
+  82116113... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  af6ca578... -> cell (0, 3) = (200, 1400) mm
+  bcb3dfe7... -> cell (3, 0) = (1400, 200) mm  (stationary)
+  c61037a3... -> cell (2, 4) = (1000, 1800) mm  (stationary)
+  d379c8b4... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  d4bee461... -> cell (4, 3) = (1800, 1400) mm
+  e91cbc5a... -> cell (1, 1) = (600, 600) mm  (stationary)
+    ⚠ not arrived before timeout 8.0s: d379c8b4..., c61037a3..., 752250b2...
+
+── Step 10 ──
+  15763f18... -> cell (0, 3) = (200, 1400) mm
+  35cd1796... -> cell (3, 3) = (1400, 1400) mm  (stationary)
+  752250b2... -> cell (4, 2) = (1800, 1000) mm
+  82116113... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  af6ca578... -> cell (0, 4) = (200, 1800) mm
+  bcb3dfe7... -> cell (3, 0) = (1400, 200) mm  (stationary)
+  c61037a3... -> cell (2, 4) = (1000, 1800) mm  (stationary)
+  d379c8b4... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  d4bee461... -> cell (4, 3) = (1800, 1400) mm
+  e91cbc5a... -> cell (1, 1) = (600, 600) mm  (stationary)
+    ⚠ not arrived before timeout 8.0s: d379c8b4..., c61037a3..., 752250b2...
+
+── Step 11 ──
+  15763f18... -> cell (0, 2) = (200, 1000) mm
+  35cd1796... -> cell (3, 3) = (1400, 1400) mm  (stationary)
+  752250b2... -> cell (4, 2) = (1800, 1000) mm
+  82116113... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  af6ca578... -> cell (0, 3) = (200, 1400) mm
+  bcb3dfe7... -> cell (3, 0) = (1400, 200) mm  (stationary)
+  c61037a3... -> cell (2, 4) = (1000, 1800) mm  (stationary)
+  d379c8b4... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  d4bee461... -> cell (4, 3) = (1800, 1400) mm
+  e91cbc5a... -> cell (1, 1) = (600, 600) mm  (stationary)
+    ⚠ not arrived before timeout 8.0s: d379c8b4..., c61037a3..., 752250b2...
+
+── Step 12 ──
+  15763f18... -> cell (0, 3) = (200, 1400) mm
+  35cd1796... -> cell (3, 3) = (1400, 1400) mm  (stationary)
+  752250b2... -> cell (4, 2) = (1800, 1000) mm
+  82116113... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  af6ca578... -> cell (0, 4) = (200, 1800) mm
+  bcb3dfe7... -> cell (3, 0) = (1400, 200) mm  (stationary)
+  c61037a3... -> cell (2, 4) = (1000, 1800) mm  (stationary)
+  d379c8b4... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  d4bee461... -> cell (4, 3) = (1800, 1400) mm
+  e91cbc5a... -> cell (1, 1) = (600, 600) mm  (stationary)
+    ⚠ not arrived before timeout 8.0s: d379c8b4..., c61037a3...
+
+── Step 13 ──
+  15763f18... -> cell (0, 2) = (200, 1000) mm
+  35cd1796... -> cell (3, 2) = (1400, 1000) mm
+  752250b2... -> cell (4, 1) = (1800, 600) mm
+  82116113... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  af6ca578... -> cell (0, 3) = (200, 1400) mm
+  bcb3dfe7... -> cell (3, 0) = (1400, 200) mm  (stationary)
+  c61037a3... -> cell (3, 3) = (1400, 1400) mm
+  d379c8b4... -> cell (3, 4) = (1400, 1800) mm
+  d4bee461... -> cell (4, 2) = (1800, 1000) mm
+  e91cbc5a... -> cell (1, 1) = (600, 600) mm  (stationary)
+
+── Step 14 ──
+  15763f18... -> cell (0, 3) = (200, 1400) mm
+  35cd1796... -> cell (3, 3) = (1400, 1400) mm
+  752250b2... -> cell (4, 2) = (1800, 1000) mm
+  82116113... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  af6ca578... -> cell (0, 4) = (200, 1800) mm
+  bcb3dfe7... -> cell (3, 0) = (1400, 200) mm  (stationary)
+  c61037a3... -> cell (3, 4) = (1400, 1800) mm
+  d379c8b4... -> cell (2, 4) = (1000, 1800) mm
+  d4bee461... -> cell (3, 2) = (1400, 1000) mm
+  e91cbc5a... -> cell (1, 1) = (600, 600) mm  (stationary)
+    ⚠ not arrived before timeout 8.0s: d4bee461..., 752250b2...
+
+── Step 15 ──
+  15763f18... -> cell (0, 2) = (200, 1000) mm
+  35cd1796... -> cell (3, 2) = (1400, 1000) mm
+  752250b2... -> cell (4, 1) = (1800, 600) mm
+  82116113... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  af6ca578... -> cell (0, 3) = (200, 1400) mm
+  bcb3dfe7... -> cell (3, 0) = (1400, 200) mm  (stationary)
+  c61037a3... -> cell (3, 3) = (1400, 1400) mm
+  d379c8b4... -> cell (3, 4) = (1400, 1800) mm
+  d4bee461... -> cell (2, 2) = (1000, 1000) mm
+  e91cbc5a... -> cell (1, 1) = (600, 600) mm  (stationary)
+    ⚠ not arrived before timeout 8.0s: d379c8b4..., d4bee461..., 752250b2...
+
+── Step 16 ──
+  15763f18... -> cell (0, 3) = (200, 1400) mm
+  35cd1796... -> cell (3, 3) = (1400, 1400) mm
+  752250b2... -> cell (3, 2) = (1400, 1000) mm
+  82116113... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  af6ca578... -> cell (0, 4) = (200, 1800) mm
+  bcb3dfe7... -> cell (3, 0) = (1400, 200) mm  (stationary)
+  c61037a3... -> cell (3, 4) = (1400, 1800) mm
+  d379c8b4... -> cell (2, 4) = (1000, 1800) mm
+  d4bee461... -> cell (4, 2) = (1800, 1000) mm
+  e91cbc5a... -> cell (1, 1) = (600, 600) mm  (stationary)
+    ⚠ not arrived before timeout 8.0s: d4bee461..., c61037a3..., 752250b2...
+
+── Step 17 ──
+  15763f18... -> cell (0, 2) = (200, 1000) mm
+  35cd1796... -> cell (3, 2) = (1400, 1000) mm
+  752250b2... -> cell (4, 1) = (1800, 600) mm
+  82116113... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  af6ca578... -> cell (0, 3) = (200, 1400) mm
+  bcb3dfe7... -> cell (3, 0) = (1400, 200) mm  (stationary)
+  c61037a3... -> cell (3, 3) = (1400, 1400) mm
+  d379c8b4... -> cell (3, 4) = (1400, 1800) mm
+  d4bee461... -> cell (2, 2) = (1000, 1000) mm
+  e91cbc5a... -> cell (1, 1) = (600, 600) mm  (stationary)
+    ⚠ not arrived before timeout 8.0s: d4bee461..., 752250b2...
+
+── Step 18 ──
+  15763f18... -> cell (0, 3) = (200, 1400) mm
+  35cd1796... -> cell (3, 3) = (1400, 1400) mm
+  752250b2... -> cell (4, 2) = (1800, 1000) mm
+  82116113... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  af6ca578... -> cell (0, 4) = (200, 1800) mm
+  bcb3dfe7... -> cell (3, 0) = (1400, 200) mm  (stationary)
+  c61037a3... -> cell (3, 4) = (1400, 1800) mm
+  d379c8b4... -> cell (2, 4) = (1000, 1800) mm
+  d4bee461... -> cell (3, 2) = (1400, 1000) mm
+  e91cbc5a... -> cell (1, 1) = (600, 600) mm  (stationary)
+    ⚠ not arrived before timeout 8.0s: d4bee461...
+
+── Step 19 ──
+  15763f18... -> cell (0, 2) = (200, 1000) mm
+  35cd1796... -> cell (3, 2) = (1400, 1000) mm
+  752250b2... -> cell (4, 1) = (1800, 600) mm
+  82116113... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  af6ca578... -> cell (0, 3) = (200, 1400) mm
+  bcb3dfe7... -> cell (3, 0) = (1400, 200) mm  (stationary)
+  c61037a3... -> cell (3, 3) = (1400, 1400) mm
+  d379c8b4... -> cell (3, 4) = (1400, 1800) mm
+  d4bee461... -> cell (2, 2) = (1000, 1000) mm
+  e91cbc5a... -> cell (1, 1) = (600, 600) mm  (stationary)
+    ⚠ not arrived before timeout 8.0s: d4bee461...
+
+── Step 20 ──
+  15763f18... -> cell (0, 3) = (200, 1400) mm
+  35cd1796... -> cell (3, 3) = (1400, 1400) mm
+  752250b2... -> cell (4, 2) = (1800, 1000) mm
+  82116113... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  af6ca578... -> cell (0, 4) = (200, 1800) mm
+  bcb3dfe7... -> cell (3, 0) = (1400, 200) mm  (stationary)
+  c61037a3... -> cell (3, 4) = (1400, 1800) mm
+  d379c8b4... -> cell (2, 4) = (1000, 1800) mm
+  d4bee461... -> cell (3, 2) = (1400, 1000) mm
+  e91cbc5a... -> cell (1, 1) = (600, 600) mm  (stationary)
+    ⚠ not arrived before timeout 8.0s: d4bee461...
+
+── Step 21 ──
+  15763f18... -> cell (0, 2) = (200, 1000) mm
+  35cd1796... -> cell (3, 2) = (1400, 1000) mm
+  752250b2... -> cell (4, 1) = (1800, 600) mm
+  82116113... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  af6ca578... -> cell (0, 3) = (200, 1400) mm
+  bcb3dfe7... -> cell (3, 0) = (1400, 200) mm  (stationary)
+  c61037a3... -> cell (3, 3) = (1400, 1400) mm
+  d379c8b4... -> cell (3, 4) = (1400, 1800) mm
+  d4bee461... -> cell (2, 2) = (1000, 1000) mm
+  e91cbc5a... -> cell (1, 1) = (600, 600) mm  (stationary)
+    ⚠ not arrived before timeout 8.0s: d4bee461...
+
+── Step 22 ──
+  15763f18... -> cell (0, 3) = (200, 1400) mm
+  35cd1796... -> cell (3, 3) = (1400, 1400) mm
+  752250b2... -> cell (4, 2) = (1800, 1000) mm
+  82116113... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  af6ca578... -> cell (0, 4) = (200, 1800) mm
+  bcb3dfe7... -> cell (3, 0) = (1400, 200) mm  (stationary)
+  c61037a3... -> cell (3, 4) = (1400, 1800) mm
+  d379c8b4... -> cell (2, 4) = (1000, 1800) mm
+  d4bee461... -> cell (3, 2) = (1400, 1000) mm
+  e91cbc5a... -> cell (1, 1) = (600, 600) mm  (stationary)
+    ⚠ not arrived before timeout 8.0s: d4bee461...
+
+── Step 23 ──
+  15763f18... -> cell (0, 2) = (200, 1000) mm
+  35cd1796... -> cell (3, 2) = (1400, 1000) mm
+  752250b2... -> cell (4, 1) = (1800, 600) mm
+  82116113... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  af6ca578... -> cell (0, 3) = (200, 1400) mm
+  bcb3dfe7... -> cell (3, 0) = (1400, 200) mm  (stationary)
+  c61037a3... -> cell (3, 3) = (1400, 1400) mm
+  d379c8b4... -> cell (3, 4) = (1400, 1800) mm
+  d4bee461... -> cell (4, 2) = (1800, 1000) mm
+  e91cbc5a... -> cell (1, 1) = (600, 600) mm  (stationary)
+
+── Step 24 ──
+  15763f18... -> cell (0, 3) = (200, 1400) mm
+  35cd1796... -> cell (3, 3) = (1400, 1400) mm
+  752250b2... -> cell (4, 2) = (1800, 1000) mm
+  82116113... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  af6ca578... -> cell (0, 4) = (200, 1800) mm
+  bcb3dfe7... -> cell (3, 0) = (1400, 200) mm  (stationary)
+  c61037a3... -> cell (3, 4) = (1400, 1800) mm
+  d379c8b4... -> cell (2, 4) = (1000, 1800) mm
+  d4bee461... -> cell (3, 2) = (1400, 1000) mm
+  e91cbc5a... -> cell (1, 1) = (600, 600) mm  (stationary)
+
+── Step 25 ──
+  15763f18... -> cell (0, 2) = (200, 1000) mm
+  35cd1796... -> cell (3, 2) = (1400, 1000) mm
+  752250b2... -> cell (4, 1) = (1800, 600) mm
+  82116113... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  af6ca578... -> cell (0, 3) = (200, 1400) mm
+  bcb3dfe7... -> cell (3, 0) = (1400, 200) mm  (stationary)
+  c61037a3... -> cell (3, 3) = (1400, 1400) mm
+  d379c8b4... -> cell (3, 4) = (1400, 1800) mm
+  d4bee461... -> cell (2, 2) = (1000, 1000) mm
+  e91cbc5a... -> cell (1, 1) = (600, 600) mm  (stationary)
+    ⚠ not arrived before timeout 8.0s: af6ca578...
+
+── Step 26 ──
+  15763f18... -> cell (0, 3) = (200, 1400) mm
+  35cd1796... -> cell (3, 3) = (1400, 1400) mm
+  752250b2... -> cell (4, 2) = (1800, 1000) mm
+  82116113... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  af6ca578... -> cell (1, 4) = (600, 1800) mm
+  bcb3dfe7... -> cell (3, 0) = (1400, 200) mm  (stationary)
+  c61037a3... -> cell (3, 4) = (1400, 1800) mm
+  d379c8b4... -> cell (2, 4) = (1000, 1800) mm
+  d4bee461... -> cell (2, 2) = (1000, 1000) mm  (stationary)
+  e91cbc5a... -> cell (1, 1) = (600, 600) mm  (stationary)
+    ⚠ not arrived before timeout 8.0s: d379c8b4..., c61037a3...
+
+── Step 27 ──
+  15763f18... -> cell (0, 4) = (200, 1800) mm
+  35cd1796... -> cell (3, 2) = (1400, 1000) mm
+  752250b2... -> cell (4, 1) = (1800, 600) mm
+  82116113... -> cell (1, 2) = (600, 1000) mm
+  af6ca578... -> cell (1, 3) = (600, 1400) mm
+  bcb3dfe7... -> cell (3, 0) = (1400, 200) mm  (stationary)
+  c61037a3... -> cell (3, 3) = (1400, 1400) mm
+  d379c8b4... -> cell (3, 4) = (1400, 1800) mm
+  d4bee461... -> cell (2, 2) = (1000, 1000) mm  (stationary)
+  e91cbc5a... -> cell (1, 1) = (600, 600) mm  (stationary)
+
+── Step 28 ──
+  15763f18... -> cell (0, 4) = (200, 1800) mm  (stationary)
+  35cd1796... -> cell (3, 3) = (1400, 1400) mm
+  752250b2... -> cell (4, 2) = (1800, 1000) mm
+  82116113... -> cell (1, 3) = (600, 1400) mm
+  af6ca578... -> cell (0, 3) = (200, 1400) mm
+  bcb3dfe7... -> cell (3, 0) = (1400, 200) mm  (stationary)
+  c61037a3... -> cell (3, 4) = (1400, 1800) mm
+  d379c8b4... -> cell (2, 4) = (1000, 1800) mm
+  d4bee461... -> cell (2, 2) = (1000, 1000) mm  (stationary)
+  e91cbc5a... -> cell (1, 1) = (600, 600) mm  (stationary)
+
+── Step 29 ──
+  15763f18... -> cell (0, 4) = (200, 1800) mm  (stationary)
+  35cd1796... -> cell (3, 2) = (1400, 1000) mm
+  752250b2... -> cell (4, 1) = (1800, 600) mm
+  82116113... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  af6ca578... -> cell (0, 3) = (200, 1400) mm  (stationary)
+  bcb3dfe7... -> cell (3, 0) = (1400, 200) mm  (stationary)
+  c61037a3... -> cell (3, 3) = (1400, 1400) mm
+  d379c8b4... -> cell (3, 4) = (1400, 1800) mm
+  d4bee461... -> cell (2, 2) = (1000, 1000) mm  (stationary)
+  e91cbc5a... -> cell (1, 1) = (600, 600) mm  (stationary)
+
+── Step 30 ──
+  15763f18... -> cell (0, 4) = (200, 1800) mm  (stationary)
+  35cd1796... -> cell (3, 3) = (1400, 1400) mm
+  752250b2... -> cell (4, 2) = (1800, 1000) mm
+  82116113... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  af6ca578... -> cell (0, 3) = (200, 1400) mm  (stationary)
+  bcb3dfe7... -> cell (3, 0) = (1400, 200) mm  (stationary)
+  c61037a3... -> cell (3, 4) = (1400, 1800) mm
+  d379c8b4... -> cell (2, 4) = (1000, 1800) mm
+  d4bee461... -> cell (2, 2) = (1000, 1000) mm  (stationary)
+  e91cbc5a... -> cell (1, 1) = (600, 600) mm  (stationary)
+
+Run 1: 7/10 at goal · 30 steps · 232.8s · 23 timeout(s) · overshoot mean 101 / max 672 mm
+
+Pausing 3 s before next run...
+
+Press Enter to start next run...
+============================================================
+RUN 2/5  (seed=2)
+============================================================
+
+10 DotBot(s) detected:
+  15763f18...  pos=(198, 1735) mm  cell=(0, 4)
+  35cd1796...  pos=(1373, 1333) mm  cell=(3, 3)
+  752250b2...  pos=(1788, 932) mm  cell=(4, 2)
+  82116113...  pos=(597, 1381) mm  cell=(1, 3)
+  af6ca578...  pos=(218, 1371) mm  cell=(0, 3)
+  bcb3dfe7...  pos=(1418, 238) mm  cell=(3, 0)
+  c61037a3...  pos=(1395, 1755) mm  cell=(3, 4)
+  d379c8b4...  pos=(1020, 1740) mm  cell=(2, 4)
+  d4bee461...  pos=(951, 980) mm  cell=(2, 2)
+  e91cbc5a...  pos=(658, 579) mm  cell=(1, 1)
+Assigned goals:
+  15763f18...  start=(0, 4)  goal=(0, 1)
+  35cd1796...  start=(3, 3)  goal=(0, 2)
+  752250b2...  start=(4, 2)  goal=(4, 3)
+  82116113...  start=(1, 3)  goal=(2, 1)
+  af6ca578...  start=(0, 3)  goal=(1, 0)
+  bcb3dfe7...  start=(3, 0)  goal=(1, 4)
+  c61037a3...  start=(3, 4)  goal=(1, 3)
+  d379c8b4...  start=(2, 4)  goal=(1, 1)
+  d4bee461...  start=(2, 2)  goal=(4, 4)
+  e91cbc5a...  start=(1, 1)  goal=(4, 0)
+
+── Step 1 ──
+  15763f18... -> cell (0, 3) = (200, 1400) mm
+  35cd1796... -> cell (3, 2) = (1400, 1000) mm
+  752250b2... -> cell (4, 3) = (1800, 1400) mm
+  82116113... -> cell (1, 2) = (600, 1000) mm
+  af6ca578... -> cell (0, 2) = (200, 1000) mm
+  bcb3dfe7... -> cell (3, 1) = (1400, 600) mm
+  c61037a3... -> cell (3, 3) = (1400, 1400) mm
+  d379c8b4... -> cell (1, 4) = (600, 1800) mm
+  d4bee461... -> cell (2, 3) = (1000, 1400) mm
+  e91cbc5a... -> cell (1, 0) = (600, 200) mm
+    ⚠ not arrived before timeout 8.0s: e91cbc5a...
+
+── Step 2 ──
+  15763f18... -> cell (0, 2) = (200, 1000) mm
+  35cd1796... -> cell (2, 2) = (1000, 1000) mm
+  752250b2... -> cell (4, 3) = (1800, 1400) mm  (stationary)
+  82116113... -> cell (1, 1) = (600, 600) mm
+  af6ca578... -> cell (0, 1) = (200, 600) mm
+  bcb3dfe7... -> cell (3, 2) = (1400, 1000) mm
+  c61037a3... -> cell (2, 3) = (1000, 1400) mm
+  d379c8b4... -> cell (1, 3) = (600, 1400) mm
+  d4bee461... -> cell (2, 4) = (1000, 1800) mm
+  e91cbc5a... -> cell (1, 0) = (600, 200) mm
+    ⚠ not arrived before timeout 8.0s: d379c8b4..., 15763f18..., d4bee461..., c61037a3...
+
+── Step 3 ──
+  15763f18... -> cell (0, 2) = (200, 1000) mm
+  35cd1796... -> cell (1, 2) = (600, 1000) mm
+  752250b2... -> cell (4, 3) = (1800, 1400) mm  (stationary)
+  82116113... -> cell (2, 1) = (1000, 600) mm
+  af6ca578... -> cell (0, 0) = (200, 200) mm
+  bcb3dfe7... -> cell (3, 3) = (1400, 1400) mm
+  c61037a3... -> cell (2, 3) = (1000, 1400) mm
+  d379c8b4... -> cell (1, 3) = (600, 1400) mm
+  d4bee461... -> cell (2, 4) = (1000, 1800) mm
+  e91cbc5a... -> cell (2, 0) = (1000, 200) mm
+    ⚠ not arrived before timeout 8.0s: d379c8b4...
+
+── Step 4 ──
+  15763f18... -> cell (0, 1) = (200, 600) mm
+  35cd1796... -> cell (0, 2) = (200, 1000) mm
+  752250b2... -> cell (4, 3) = (1800, 1400) mm  (stationary)
+  82116113... -> cell (2, 1) = (1000, 600) mm  (stationary)
+  af6ca578... -> cell (1, 0) = (600, 200) mm
+  bcb3dfe7... -> cell (2, 3) = (1000, 1400) mm
+  c61037a3... -> cell (2, 2) = (1000, 1000) mm
+  d379c8b4... -> cell (1, 3) = (600, 1400) mm
+  d4bee461... -> cell (3, 4) = (1400, 1800) mm
+  e91cbc5a... -> cell (3, 0) = (1400, 200) mm
+    ⚠ not arrived before timeout 8.0s: d4bee461...
+
+── Step 5 ──
+  15763f18... -> cell (0, 1) = (200, 600) mm  (stationary)
+  35cd1796... -> cell (0, 2) = (200, 1000) mm  (stationary)
+  752250b2... -> cell (4, 3) = (1800, 1400) mm  (stationary)
+  82116113... -> cell (2, 1) = (1000, 600) mm  (stationary)
+  af6ca578... -> cell (1, 0) = (600, 200) mm  (stationary)
+  bcb3dfe7... -> cell (2, 4) = (1000, 1800) mm
+  c61037a3... -> cell (2, 3) = (1000, 1400) mm
+  d379c8b4... -> cell (1, 2) = (600, 1000) mm
+  d4bee461... -> cell (4, 4) = (1800, 1800) mm
+  e91cbc5a... -> cell (4, 0) = (1800, 200) mm
+
+── Step 6 ──
+  15763f18... -> cell (0, 1) = (200, 600) mm  (stationary)
+  35cd1796... -> cell (0, 2) = (200, 1000) mm  (stationary)
+  752250b2... -> cell (4, 3) = (1800, 1400) mm  (stationary)
+  82116113... -> cell (2, 1) = (1000, 600) mm  (stationary)
+  af6ca578... -> cell (1, 0) = (600, 200) mm  (stationary)
+  bcb3dfe7... -> cell (1, 4) = (600, 1800) mm
+  c61037a3... -> cell (1, 3) = (600, 1400) mm
+  d379c8b4... -> cell (1, 1) = (600, 600) mm
+  d4bee461... -> cell (4, 4) = (1800, 1800) mm  (stationary)
+  e91cbc5a... -> cell (4, 0) = (1800, 200) mm  (stationary)
+
+All bots reached their goal at step 6 (verified from LH2).
+
+Run 2: 10/10 at goal · 6 steps · 43.1s · 4 timeout(s) · overshoot mean 78 / max 435 mm
+
+Pausing 3 s before next run...
+
+Press Enter to start next run...
+============================================================
+RUN 3/5  (seed=3)
+============================================================
+
+10 DotBot(s) detected:
+  15763f18...  pos=(209, 671) mm  cell=(0, 1)
+  35cd1796...  pos=(244, 1005) mm  cell=(0, 2)
+  752250b2...  pos=(1792, 1376) mm  cell=(4, 3)
+  82116113...  pos=(989, 575) mm  cell=(2, 1)
+  af6ca578...  pos=(544, 211) mm  cell=(1, 0)
+  bcb3dfe7...  pos=(564, 1749) mm  cell=(1, 4)
+  c61037a3...  pos=(617, 1385) mm  cell=(1, 3)
+  d379c8b4...  pos=(589, 593) mm  cell=(1, 1)
+  d4bee461...  pos=(1775, 1822) mm  cell=(4, 4)
+  e91cbc5a...  pos=(1756, 216) mm  cell=(4, 0)
+Assigned goals:
+  15763f18...  start=(0, 1)  goal=(1, 2)
+  35cd1796...  start=(0, 2)  goal=(3, 3)
+  752250b2...  start=(4, 3)  goal=(3, 2)
+  82116113...  start=(2, 1)  goal=(0, 4)
+  af6ca578...  start=(1, 0)  goal=(2, 1)
+  bcb3dfe7...  start=(1, 4)  goal=(3, 4)
+  c61037a3...  start=(1, 3)  goal=(3, 0)
+  d379c8b4...  start=(1, 1)  goal=(0, 2)
+  d4bee461...  start=(4, 4)  goal=(0, 0)
+  e91cbc5a...  start=(4, 0)  goal=(4, 3)
+
+── Step 1 ──
+  15763f18... -> cell (0, 2) = (200, 1000) mm
+  35cd1796... -> cell (0, 3) = (200, 1400) mm
+  752250b2... -> cell (4, 2) = (1800, 1000) mm
+  82116113... -> cell (2, 2) = (1000, 1000) mm
+  af6ca578... -> cell (1, 1) = (600, 600) mm
+  bcb3dfe7... -> cell (2, 4) = (1000, 1800) mm
+  c61037a3... -> cell (2, 3) = (1000, 1400) mm
+  d379c8b4... -> cell (1, 2) = (600, 1000) mm
+  d4bee461... -> cell (4, 3) = (1800, 1400) mm
+  e91cbc5a... -> cell (4, 1) = (1800, 600) mm
+
+── Step 2 ──
+  15763f18... -> cell (0, 1) = (200, 600) mm
+  35cd1796... -> cell (1, 3) = (600, 1400) mm
+  752250b2... -> cell (3, 2) = (1400, 1000) mm
+  82116113... -> cell (1, 2) = (600, 1000) mm
+  af6ca578... -> cell (2, 1) = (1000, 600) mm
+  bcb3dfe7... -> cell (3, 4) = (1400, 1800) mm
+  c61037a3... -> cell (2, 2) = (1000, 1000) mm
+  d379c8b4... -> cell (0, 2) = (200, 1000) mm
+  d4bee461... -> cell (3, 3) = (1400, 1400) mm
+  e91cbc5a... -> cell (4, 2) = (1800, 1000) mm
+    ⚠ not arrived before timeout 8.0s: 15763f18...
+
+── Step 3 ──
+  15763f18... -> cell (0, 2) = (200, 1000) mm
+  35cd1796... -> cell (2, 3) = (1000, 1400) mm
+  752250b2... -> cell (3, 1) = (1400, 600) mm
+  82116113... -> cell (1, 3) = (600, 1400) mm
+  af6ca578... -> cell (2, 0) = (1000, 200) mm
+  bcb3dfe7... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  c61037a3... -> cell (2, 1) = (1000, 600) mm
+  d379c8b4... -> cell (0, 3) = (200, 1400) mm
+  d4bee461... -> cell (3, 2) = (1400, 1000) mm
+  e91cbc5a... -> cell (4, 3) = (1800, 1400) mm
+
+── Step 4 ──
+  15763f18... -> cell (1, 2) = (600, 1000) mm
+  35cd1796... -> cell (3, 3) = (1400, 1400) mm
+  752250b2... -> cell (3, 2) = (1400, 1000) mm
+  82116113... -> cell (1, 4) = (600, 1800) mm
+  af6ca578... -> cell (2, 1) = (1000, 600) mm
+  bcb3dfe7... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  c61037a3... -> cell (3, 1) = (1400, 600) mm
+  d379c8b4... -> cell (0, 2) = (200, 1000) mm
+  d4bee461... -> cell (2, 2) = (1000, 1000) mm
+  e91cbc5a... -> cell (4, 3) = (1800, 1400) mm  (stationary)
+    ⚠ not arrived before timeout 8.0s: af6ca578...
+
+── Step 5 ──
+  15763f18... -> cell (1, 2) = (600, 1000) mm  (stationary)
+  35cd1796... -> cell (3, 3) = (1400, 1400) mm  (stationary)
+  752250b2... -> cell (3, 2) = (1400, 1000) mm  (stationary)
+  82116113... -> cell (0, 4) = (200, 1800) mm
+  af6ca578... -> cell (1, 0) = (600, 200) mm
+  bcb3dfe7... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  c61037a3... -> cell (3, 0) = (1400, 200) mm
+  d379c8b4... -> cell (0, 2) = (200, 1000) mm  (stationary)
+  d4bee461... -> cell (2, 1) = (1000, 600) mm
+  e91cbc5a... -> cell (4, 3) = (1800, 1400) mm  (stationary)
+    ⚠ not arrived before timeout 8.0s: 82116113...
+
+── Step 6 ──
+  15763f18... -> cell (1, 2) = (600, 1000) mm  (stationary)
+  35cd1796... -> cell (3, 3) = (1400, 1400) mm  (stationary)
+  752250b2... -> cell (3, 2) = (1400, 1000) mm  (stationary)
+  82116113... -> cell (0, 4) = (200, 1800) mm
+  af6ca578... -> cell (1, 1) = (600, 600) mm
+  bcb3dfe7... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  c61037a3... -> cell (3, 0) = (1400, 200) mm  (stationary)
+  d379c8b4... -> cell (0, 2) = (200, 1000) mm  (stationary)
+  d4bee461... -> cell (2, 0) = (1000, 200) mm
+  e91cbc5a... -> cell (4, 3) = (1800, 1400) mm  (stationary)
+    ⚠ not arrived before timeout 8.0s: 82116113...
+
+── Step 7 ──
+  15763f18... -> cell (1, 2) = (600, 1000) mm  (stationary)
+  35cd1796... -> cell (3, 3) = (1400, 1400) mm  (stationary)
+  752250b2... -> cell (3, 2) = (1400, 1000) mm  (stationary)
+  82116113... -> cell (0, 4) = (200, 1800) mm
+  af6ca578... -> cell (2, 1) = (1000, 600) mm
+  bcb3dfe7... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  c61037a3... -> cell (3, 0) = (1400, 200) mm  (stationary)
+  d379c8b4... -> cell (0, 2) = (200, 1000) mm  (stationary)
+  d4bee461... -> cell (1, 0) = (600, 200) mm
+  e91cbc5a... -> cell (4, 3) = (1800, 1400) mm  (stationary)
+
+── Step 8 ──
+  15763f18... -> cell (1, 2) = (600, 1000) mm  (stationary)
+  35cd1796... -> cell (3, 3) = (1400, 1400) mm  (stationary)
+  752250b2... -> cell (3, 2) = (1400, 1000) mm  (stationary)
+  82116113... -> cell (0, 4) = (200, 1800) mm  (stationary)
+  af6ca578... -> cell (2, 1) = (1000, 600) mm  (stationary)
+  bcb3dfe7... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  c61037a3... -> cell (3, 0) = (1400, 200) mm  (stationary)
+  d379c8b4... -> cell (0, 2) = (200, 1000) mm  (stationary)
+  d4bee461... -> cell (0, 0) = (200, 200) mm
+  e91cbc5a... -> cell (4, 3) = (1800, 1400) mm  (stationary)
+
+All bots reached their goal at step 8 (verified from LH2).
+
+Run 3: 10/10 at goal · 8 steps · 46.9s · 4 timeout(s) · overshoot mean 55 / max 394 mm
+
+Pausing 3 s before next run...
+
+Press Enter to start next run...
+============================================================
+RUN 4/5  (seed=4)
+============================================================
+
+10 DotBot(s) detected:
+  15763f18...  pos=(558, 1010) mm  cell=(1, 2)
+  35cd1796...  pos=(1380, 1392) mm  cell=(3, 3)
+  752250b2...  pos=(1421, 971) mm  cell=(3, 2)
+  82116113...  pos=(240, 1827) mm  cell=(0, 4)
+  af6ca578...  pos=(962, 650) mm  cell=(2, 1)
+  bcb3dfe7...  pos=(1400, 1821) mm  cell=(3, 4)
+  c61037a3...  pos=(1445, 203) mm  cell=(3, 0)
+  d379c8b4...  pos=(207, 1050) mm  cell=(0, 2)
+  d4bee461...  pos=(234, 186) mm  cell=(0, 0)
+  e91cbc5a...  pos=(1772, 1331) mm  cell=(4, 3)
+Assigned goals:
+  15763f18...  start=(1, 2)  goal=(1, 2)
+  35cd1796...  start=(3, 3)  goal=(1, 4)
+  752250b2...  start=(3, 2)  goal=(0, 3)
+  82116113...  start=(0, 4)  goal=(2, 2)
+  af6ca578...  start=(2, 1)  goal=(3, 0)
+  bcb3dfe7...  start=(3, 4)  goal=(0, 4)
+  c61037a3...  start=(3, 0)  goal=(0, 2)
+  d379c8b4...  start=(0, 2)  goal=(3, 3)
+  d4bee461...  start=(0, 0)  goal=(0, 0)
+  e91cbc5a...  start=(4, 3)  goal=(4, 1)
+
+── Step 1 ──
+  15763f18... -> cell (1, 2) = (600, 1000) mm  (stationary)
+  35cd1796... -> cell (3, 4) = (1400, 1800) mm
+  752250b2... -> cell (3, 3) = (1400, 1400) mm
+  82116113... -> cell (1, 4) = (600, 1800) mm
+  af6ca578... -> cell (2, 0) = (1000, 200) mm
+  bcb3dfe7... -> cell (2, 4) = (1000, 1800) mm
+  c61037a3... -> cell (3, 1) = (1400, 600) mm
+  d379c8b4... -> cell (0, 3) = (200, 1400) mm
+  d4bee461... -> cell (0, 0) = (200, 200) mm  (stationary)
+  e91cbc5a... -> cell (4, 2) = (1800, 1000) mm
+
+── Step 2 ──
+  15763f18... -> cell (1, 2) = (600, 1000) mm  (stationary)
+  35cd1796... -> cell (2, 4) = (1000, 1800) mm
+  752250b2... -> cell (2, 3) = (1000, 1400) mm
+  82116113... -> cell (0, 4) = (200, 1800) mm
+  af6ca578... -> cell (3, 0) = (1400, 200) mm
+  bcb3dfe7... -> cell (1, 4) = (600, 1800) mm
+  c61037a3... -> cell (3, 2) = (1400, 1000) mm
+  d379c8b4... -> cell (1, 3) = (600, 1400) mm
+  d4bee461... -> cell (0, 0) = (200, 200) mm  (stationary)
+  e91cbc5a... -> cell (4, 1) = (1800, 600) mm
+
+── Step 3 ──
+  15763f18... -> cell (1, 2) = (600, 1000) mm  (stationary)
+  35cd1796... -> cell (1, 4) = (600, 1800) mm
+  752250b2... -> cell (2, 2) = (1000, 1000) mm
+  82116113... -> cell (0, 3) = (200, 1400) mm
+  af6ca578... -> cell (3, 0) = (1400, 200) mm  (stationary)
+  bcb3dfe7... -> cell (0, 4) = (200, 1800) mm
+  c61037a3... -> cell (3, 1) = (1400, 600) mm
+  d379c8b4... -> cell (2, 3) = (1000, 1400) mm
+  d4bee461... -> cell (0, 0) = (200, 200) mm  (stationary)
+  e91cbc5a... -> cell (4, 1) = (1800, 600) mm  (stationary)
+
+── Step 4 ──
+  15763f18... -> cell (1, 2) = (600, 1000) mm  (stationary)
+  35cd1796... -> cell (1, 4) = (600, 1800) mm  (stationary)
+  752250b2... -> cell (2, 3) = (1000, 1400) mm
+  82116113... -> cell (0, 2) = (200, 1000) mm
+  af6ca578... -> cell (3, 0) = (1400, 200) mm  (stationary)
+  bcb3dfe7... -> cell (0, 4) = (200, 1800) mm  (stationary)
+  c61037a3... -> cell (3, 2) = (1400, 1000) mm
+  d379c8b4... -> cell (3, 3) = (1400, 1400) mm
+  d4bee461... -> cell (0, 0) = (200, 200) mm  (stationary)
+  e91cbc5a... -> cell (4, 1) = (1800, 600) mm  (stationary)
+
+── Step 5 ──
+  15763f18... -> cell (1, 1) = (600, 600) mm
+  35cd1796... -> cell (1, 4) = (600, 1800) mm  (stationary)
+  752250b2... -> cell (1, 3) = (600, 1400) mm
+  82116113... -> cell (1, 2) = (600, 1000) mm
+  af6ca578... -> cell (3, 0) = (1400, 200) mm  (stationary)
+  bcb3dfe7... -> cell (0, 4) = (200, 1800) mm  (stationary)
+  c61037a3... -> cell (2, 2) = (1000, 1000) mm
+  d379c8b4... -> cell (3, 3) = (1400, 1400) mm  (stationary)
+  d4bee461... -> cell (0, 0) = (200, 200) mm  (stationary)
+  e91cbc5a... -> cell (4, 1) = (1800, 600) mm  (stationary)
+
+── Step 6 ──
+  15763f18... -> cell (1, 0) = (600, 200) mm
+  35cd1796... -> cell (1, 4) = (600, 1800) mm  (stationary)
+  752250b2... -> cell (0, 3) = (200, 1400) mm
+  82116113... -> cell (1, 1) = (600, 600) mm
+  af6ca578... -> cell (3, 0) = (1400, 200) mm  (stationary)
+  bcb3dfe7... -> cell (0, 4) = (200, 1800) mm  (stationary)
+  c61037a3... -> cell (1, 2) = (600, 1000) mm
+  d379c8b4... -> cell (3, 3) = (1400, 1400) mm  (stationary)
+  d4bee461... -> cell (0, 0) = (200, 200) mm  (stationary)
+  e91cbc5a... -> cell (4, 1) = (1800, 600) mm  (stationary)
+
+── Step 7 ──
+  15763f18... -> cell (1, 1) = (600, 600) mm
+  35cd1796... -> cell (1, 4) = (600, 1800) mm  (stationary)
+  752250b2... -> cell (0, 3) = (200, 1400) mm  (stationary)
+  82116113... -> cell (1, 2) = (600, 1000) mm
+  af6ca578... -> cell (3, 0) = (1400, 200) mm  (stationary)
+  bcb3dfe7... -> cell (0, 4) = (200, 1800) mm  (stationary)
+  c61037a3... -> cell (0, 2) = (200, 1000) mm
+  d379c8b4... -> cell (3, 3) = (1400, 1400) mm  (stationary)
+  d4bee461... -> cell (0, 0) = (200, 200) mm  (stationary)
+  e91cbc5a... -> cell (4, 1) = (1800, 600) mm  (stationary)
+
+── Step 8 ──
+  15763f18... -> cell (1, 2) = (600, 1000) mm
+  35cd1796... -> cell (1, 4) = (600, 1800) mm  (stationary)
+  752250b2... -> cell (0, 3) = (200, 1400) mm  (stationary)
+  82116113... -> cell (2, 2) = (1000, 1000) mm
+  af6ca578... -> cell (3, 0) = (1400, 200) mm  (stationary)
+  bcb3dfe7... -> cell (0, 4) = (200, 1800) mm  (stationary)
+  c61037a3... -> cell (0, 2) = (200, 1000) mm  (stationary)
+  d379c8b4... -> cell (3, 3) = (1400, 1400) mm  (stationary)
+  d4bee461... -> cell (0, 0) = (200, 200) mm  (stationary)
+  e91cbc5a... -> cell (4, 1) = (1800, 600) mm  (stationary)
+
+All bots reached their goal at step 8 (verified from LH2).
+
+Run 4: 10/10 at goal · 8 steps · 28.6s · 0 timeout(s) · overshoot mean 42 / max 75 mm
+
+Pausing 3 s before next run...
+
+Press Enter to start next run...
+============================================================
+RUN 5/5  (seed=5)
+============================================================
+
+10 DotBot(s) detected:
+  15763f18...  pos=(609, 959) mm  cell=(1, 2)
+  35cd1796...  pos=(646, 1810) mm  cell=(1, 4)
+  752250b2...  pos=(269, 1410) mm  cell=(0, 3)
+  82116113...  pos=(943, 973) mm  cell=(2, 2)
+  af6ca578...  pos=(1374, 177) mm  cell=(3, 0)
+  bcb3dfe7...  pos=(207, 1787) mm  cell=(0, 4)
+  c61037a3...  pos=(230, 976) mm  cell=(0, 2)
+  d379c8b4...  pos=(1332, 1381) mm  cell=(3, 3)
+  d4bee461...  pos=(234, 186) mm  cell=(0, 0)
+  e91cbc5a...  pos=(1818, 629) mm  cell=(4, 1)
+Assigned goals:
+  15763f18...  start=(1, 2)  goal=(3, 4)
+  35cd1796...  start=(1, 4)  goal=(1, 3)
+  752250b2...  start=(0, 3)  goal=(2, 1)
+  82116113...  start=(2, 2)  goal=(4, 0)
+  af6ca578...  start=(3, 0)  goal=(3, 1)
+  bcb3dfe7...  start=(0, 4)  goal=(0, 0)
+  c61037a3...  start=(0, 2)  goal=(2, 4)
+  d379c8b4...  start=(3, 3)  goal=(1, 2)
+  d4bee461...  start=(0, 0)  goal=(0, 1)
+  e91cbc5a...  start=(4, 1)  goal=(1, 0)
+
+── Step 1 ──
+  15763f18... -> cell (2, 2) = (1000, 1000) mm
+  35cd1796... -> cell (2, 4) = (1000, 1800) mm
+  752250b2... -> cell (1, 3) = (600, 1400) mm
+  82116113... -> cell (2, 1) = (1000, 600) mm
+  af6ca578... -> cell (3, 1) = (1400, 600) mm
+  bcb3dfe7... -> cell (1, 4) = (600, 1800) mm
+  c61037a3... -> cell (0, 3) = (200, 1400) mm
+  d379c8b4... -> cell (3, 2) = (1400, 1000) mm
+  d4bee461... -> cell (0, 1) = (200, 600) mm
+  e91cbc5a... -> cell (4, 0) = (1800, 200) mm
+
+── Step 2 ──
+  15763f18... -> cell (2, 3) = (1000, 1400) mm
+  35cd1796... -> cell (1, 4) = (600, 1800) mm
+  752250b2... -> cell (1, 2) = (600, 1000) mm
+  82116113... -> cell (2, 0) = (1000, 200) mm
+  af6ca578... -> cell (3, 1) = (1400, 600) mm  (stationary)
+  bcb3dfe7... -> cell (1, 3) = (600, 1400) mm
+  c61037a3... -> cell (0, 4) = (200, 1800) mm
+  d379c8b4... -> cell (2, 2) = (1000, 1000) mm
+  d4bee461... -> cell (0, 1) = (200, 600) mm  (stationary)
+  e91cbc5a... -> cell (3, 0) = (1400, 200) mm
+    ⚠ not arrived before timeout 8.0s: 35cd1796...
+
+── Step 3 ──
+  15763f18... -> cell (2, 4) = (1000, 1800) mm
+  35cd1796... -> cell (1, 3) = (600, 1400) mm
+  752250b2... -> cell (1, 1) = (600, 600) mm
+  82116113... -> cell (2, 1) = (1000, 600) mm
+  af6ca578... -> cell (3, 1) = (1400, 600) mm  (stationary)
+  bcb3dfe7... -> cell (0, 3) = (200, 1400) mm
+  c61037a3... -> cell (1, 4) = (600, 1800) mm
+  d379c8b4... -> cell (1, 2) = (600, 1000) mm
+  d4bee461... -> cell (0, 1) = (200, 600) mm  (stationary)
+  e91cbc5a... -> cell (2, 0) = (1000, 200) mm
+    ⚠ not arrived before timeout 8.0s: d379c8b4..., 752250b2...
+
+── Step 4 ──
+  15763f18... -> cell (3, 4) = (1400, 1800) mm
+  35cd1796... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  752250b2... -> cell (1, 1) = (600, 600) mm
+  82116113... -> cell (2, 0) = (1000, 200) mm
+  af6ca578... -> cell (3, 1) = (1400, 600) mm  (stationary)
+  bcb3dfe7... -> cell (0, 2) = (200, 1000) mm
+  c61037a3... -> cell (2, 4) = (1000, 1800) mm
+  d379c8b4... -> cell (1, 2) = (600, 1000) mm
+  d4bee461... -> cell (0, 1) = (200, 600) mm  (stationary)
+  e91cbc5a... -> cell (1, 0) = (600, 200) mm
+    ⚠ not arrived before timeout 8.0s: d379c8b4..., 752250b2...
+
+── Step 5 ──
+  15763f18... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  35cd1796... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  752250b2... -> cell (1, 1) = (600, 600) mm
+  82116113... -> cell (3, 0) = (1400, 200) mm
+  af6ca578... -> cell (3, 1) = (1400, 600) mm  (stationary)
+  bcb3dfe7... -> cell (0, 1) = (200, 600) mm
+  c61037a3... -> cell (2, 4) = (1000, 1800) mm  (stationary)
+  d379c8b4... -> cell (1, 2) = (600, 1000) mm
+  d4bee461... -> cell (0, 0) = (200, 200) mm
+  e91cbc5a... -> cell (1, 0) = (600, 200) mm  (stationary)
+    ⚠ not arrived before timeout 8.0s: d379c8b4..., 752250b2...
+
+── Step 6 ──
+  15763f18... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  35cd1796... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  752250b2... -> cell (1, 1) = (600, 600) mm
+  82116113... -> cell (4, 0) = (1800, 200) mm
+  af6ca578... -> cell (3, 1) = (1400, 600) mm  (stationary)
+  bcb3dfe7... -> cell (0, 2) = (200, 1000) mm
+  c61037a3... -> cell (2, 4) = (1000, 1800) mm  (stationary)
+  d379c8b4... -> cell (1, 2) = (600, 1000) mm
+  d4bee461... -> cell (0, 1) = (200, 600) mm
+  e91cbc5a... -> cell (1, 0) = (600, 200) mm  (stationary)
+    ⚠ not arrived before timeout 8.0s: d379c8b4..., 752250b2...
+
+── Step 7 ──
+  15763f18... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  35cd1796... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  752250b2... -> cell (1, 1) = (600, 600) mm
+  82116113... -> cell (4, 0) = (1800, 200) mm  (stationary)
+  af6ca578... -> cell (3, 1) = (1400, 600) mm  (stationary)
+  bcb3dfe7... -> cell (0, 1) = (200, 600) mm
+  c61037a3... -> cell (2, 4) = (1000, 1800) mm  (stationary)
+  d379c8b4... -> cell (1, 2) = (600, 1000) mm
+  d4bee461... -> cell (0, 0) = (200, 200) mm
+  e91cbc5a... -> cell (1, 0) = (600, 200) mm  (stationary)
+    ⚠ not arrived before timeout 8.0s: d379c8b4..., 752250b2...
+
+── Step 8 ──
+  15763f18... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  35cd1796... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  752250b2... -> cell (1, 1) = (600, 600) mm
+  82116113... -> cell (4, 0) = (1800, 200) mm  (stationary)
+  af6ca578... -> cell (3, 1) = (1400, 600) mm  (stationary)
+  bcb3dfe7... -> cell (0, 2) = (200, 1000) mm
+  c61037a3... -> cell (2, 4) = (1000, 1800) mm  (stationary)
+  d379c8b4... -> cell (1, 2) = (600, 1000) mm
+  d4bee461... -> cell (0, 1) = (200, 600) mm
+  e91cbc5a... -> cell (1, 0) = (600, 200) mm  (stationary)
+    ⚠ not arrived before timeout 8.0s: 752250b2...
+
+── Step 9 ──
+  15763f18... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  35cd1796... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  752250b2... -> cell (2, 1) = (1000, 600) mm
+  82116113... -> cell (4, 0) = (1800, 200) mm  (stationary)
+  af6ca578... -> cell (3, 1) = (1400, 600) mm  (stationary)
+  bcb3dfe7... -> cell (0, 1) = (200, 600) mm
+  c61037a3... -> cell (2, 4) = (1000, 1800) mm  (stationary)
+  d379c8b4... -> cell (1, 2) = (600, 1000) mm  (stationary)
+  d4bee461... -> cell (0, 0) = (200, 200) mm
+  e91cbc5a... -> cell (1, 0) = (600, 200) mm  (stationary)
+
+── Step 10 ──
+  15763f18... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  35cd1796... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  752250b2... -> cell (2, 1) = (1000, 600) mm  (stationary)
+  82116113... -> cell (4, 0) = (1800, 200) mm  (stationary)
+  af6ca578... -> cell (3, 1) = (1400, 600) mm  (stationary)
+  bcb3dfe7... -> cell (0, 2) = (200, 1000) mm
+  c61037a3... -> cell (2, 4) = (1000, 1800) mm  (stationary)
+  d379c8b4... -> cell (1, 2) = (600, 1000) mm  (stationary)
+  d4bee461... -> cell (0, 1) = (200, 600) mm
+  e91cbc5a... -> cell (1, 0) = (600, 200) mm  (stationary)
+
+── Step 11 ──
+  15763f18... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  35cd1796... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  752250b2... -> cell (2, 1) = (1000, 600) mm  (stationary)
+  82116113... -> cell (4, 0) = (1800, 200) mm  (stationary)
+  af6ca578... -> cell (3, 1) = (1400, 600) mm  (stationary)
+  bcb3dfe7... -> cell (0, 1) = (200, 600) mm
+  c61037a3... -> cell (2, 4) = (1000, 1800) mm  (stationary)
+  d379c8b4... -> cell (1, 2) = (600, 1000) mm  (stationary)
+  d4bee461... -> cell (0, 0) = (200, 200) mm
+  e91cbc5a... -> cell (1, 0) = (600, 200) mm  (stationary)
+
+── Step 12 ──
+  15763f18... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  35cd1796... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  752250b2... -> cell (2, 1) = (1000, 600) mm  (stationary)
+  82116113... -> cell (4, 0) = (1800, 200) mm  (stationary)
+  af6ca578... -> cell (3, 1) = (1400, 600) mm  (stationary)
+  bcb3dfe7... -> cell (0, 2) = (200, 1000) mm
+  c61037a3... -> cell (2, 4) = (1000, 1800) mm  (stationary)
+  d379c8b4... -> cell (1, 2) = (600, 1000) mm  (stationary)
+  d4bee461... -> cell (0, 1) = (200, 600) mm
+  e91cbc5a... -> cell (1, 0) = (600, 200) mm  (stationary)
+
+── Step 13 ──
+  15763f18... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  35cd1796... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  752250b2... -> cell (2, 1) = (1000, 600) mm  (stationary)
+  82116113... -> cell (4, 0) = (1800, 200) mm  (stationary)
+  af6ca578... -> cell (3, 1) = (1400, 600) mm  (stationary)
+  bcb3dfe7... -> cell (0, 1) = (200, 600) mm
+  c61037a3... -> cell (2, 4) = (1000, 1800) mm  (stationary)
+  d379c8b4... -> cell (1, 2) = (600, 1000) mm  (stationary)
+  d4bee461... -> cell (0, 0) = (200, 200) mm
+  e91cbc5a... -> cell (1, 0) = (600, 200) mm  (stationary)
+
+── Step 14 ──
+  15763f18... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  35cd1796... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  752250b2... -> cell (2, 1) = (1000, 600) mm  (stationary)
+  82116113... -> cell (4, 0) = (1800, 200) mm  (stationary)
+  af6ca578... -> cell (3, 1) = (1400, 600) mm  (stationary)
+  bcb3dfe7... -> cell (0, 2) = (200, 1000) mm
+  c61037a3... -> cell (2, 4) = (1000, 1800) mm  (stationary)
+  d379c8b4... -> cell (1, 2) = (600, 1000) mm  (stationary)
+  d4bee461... -> cell (0, 1) = (200, 600) mm
+  e91cbc5a... -> cell (1, 0) = (600, 200) mm  (stationary)
+
+── Step 15 ──
+  15763f18... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  35cd1796... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  752250b2... -> cell (2, 1) = (1000, 600) mm  (stationary)
+  82116113... -> cell (4, 0) = (1800, 200) mm  (stationary)
+  af6ca578... -> cell (3, 1) = (1400, 600) mm  (stationary)
+  bcb3dfe7... -> cell (0, 1) = (200, 600) mm
+  c61037a3... -> cell (2, 4) = (1000, 1800) mm  (stationary)
+  d379c8b4... -> cell (1, 2) = (600, 1000) mm  (stationary)
+  d4bee461... -> cell (0, 0) = (200, 200) mm
+  e91cbc5a... -> cell (1, 0) = (600, 200) mm  (stationary)
+
+── Step 16 ──
+  15763f18... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  35cd1796... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  752250b2... -> cell (2, 1) = (1000, 600) mm  (stationary)
+  82116113... -> cell (4, 0) = (1800, 200) mm  (stationary)
+  af6ca578... -> cell (3, 1) = (1400, 600) mm  (stationary)
+  bcb3dfe7... -> cell (0, 2) = (200, 1000) mm
+  c61037a3... -> cell (2, 4) = (1000, 1800) mm  (stationary)
+  d379c8b4... -> cell (1, 2) = (600, 1000) mm  (stationary)
+  d4bee461... -> cell (0, 1) = (200, 600) mm
+  e91cbc5a... -> cell (1, 0) = (600, 200) mm  (stationary)
+
+── Step 17 ──
+  15763f18... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  35cd1796... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  752250b2... -> cell (2, 1) = (1000, 600) mm  (stationary)
+  82116113... -> cell (4, 0) = (1800, 200) mm  (stationary)
+  af6ca578... -> cell (3, 1) = (1400, 600) mm  (stationary)
+  bcb3dfe7... -> cell (0, 1) = (200, 600) mm
+  c61037a3... -> cell (2, 4) = (1000, 1800) mm  (stationary)
+  d379c8b4... -> cell (1, 2) = (600, 1000) mm  (stationary)
+  d4bee461... -> cell (0, 0) = (200, 200) mm
+  e91cbc5a... -> cell (1, 0) = (600, 200) mm  (stationary)
+
+── Step 18 ──
+  15763f18... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  35cd1796... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  752250b2... -> cell (2, 1) = (1000, 600) mm  (stationary)
+  82116113... -> cell (4, 0) = (1800, 200) mm  (stationary)
+  af6ca578... -> cell (3, 1) = (1400, 600) mm  (stationary)
+  bcb3dfe7... -> cell (0, 2) = (200, 1000) mm
+  c61037a3... -> cell (2, 4) = (1000, 1800) mm  (stationary)
+  d379c8b4... -> cell (1, 2) = (600, 1000) mm  (stationary)
+  d4bee461... -> cell (0, 1) = (200, 600) mm
+  e91cbc5a... -> cell (1, 0) = (600, 200) mm  (stationary)
+
+── Step 19 ──
+  15763f18... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  35cd1796... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  752250b2... -> cell (2, 1) = (1000, 600) mm  (stationary)
+  82116113... -> cell (4, 0) = (1800, 200) mm  (stationary)
+  af6ca578... -> cell (3, 1) = (1400, 600) mm  (stationary)
+  bcb3dfe7... -> cell (0, 1) = (200, 600) mm
+  c61037a3... -> cell (2, 4) = (1000, 1800) mm  (stationary)
+  d379c8b4... -> cell (1, 2) = (600, 1000) mm  (stationary)
+  d4bee461... -> cell (0, 0) = (200, 200) mm
+  e91cbc5a... -> cell (1, 0) = (600, 200) mm  (stationary)
+
+── Step 20 ──
+  15763f18... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  35cd1796... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  752250b2... -> cell (2, 1) = (1000, 600) mm  (stationary)
+  82116113... -> cell (4, 0) = (1800, 200) mm  (stationary)
+  af6ca578... -> cell (3, 1) = (1400, 600) mm  (stationary)
+  bcb3dfe7... -> cell (0, 2) = (200, 1000) mm
+  c61037a3... -> cell (2, 4) = (1000, 1800) mm  (stationary)
+  d379c8b4... -> cell (1, 2) = (600, 1000) mm  (stationary)
+  d4bee461... -> cell (0, 1) = (200, 600) mm
+  e91cbc5a... -> cell (1, 0) = (600, 200) mm  (stationary)
+
+── Step 21 ──
+  15763f18... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  35cd1796... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  752250b2... -> cell (2, 1) = (1000, 600) mm  (stationary)
+  82116113... -> cell (4, 0) = (1800, 200) mm  (stationary)
+  af6ca578... -> cell (3, 1) = (1400, 600) mm  (stationary)
+  bcb3dfe7... -> cell (0, 1) = (200, 600) mm
+  c61037a3... -> cell (2, 4) = (1000, 1800) mm  (stationary)
+  d379c8b4... -> cell (1, 2) = (600, 1000) mm  (stationary)
+  d4bee461... -> cell (0, 0) = (200, 200) mm
+  e91cbc5a... -> cell (1, 0) = (600, 200) mm  (stationary)
+
+── Step 22 ──
+  15763f18... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  35cd1796... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  752250b2... -> cell (2, 1) = (1000, 600) mm  (stationary)
+  82116113... -> cell (4, 0) = (1800, 200) mm  (stationary)
+  af6ca578... -> cell (3, 1) = (1400, 600) mm  (stationary)
+  bcb3dfe7... -> cell (0, 2) = (200, 1000) mm
+  c61037a3... -> cell (2, 4) = (1000, 1800) mm  (stationary)
+  d379c8b4... -> cell (1, 2) = (600, 1000) mm  (stationary)
+  d4bee461... -> cell (0, 1) = (200, 600) mm
+  e91cbc5a... -> cell (1, 0) = (600, 200) mm  (stationary)
+
+── Step 23 ──
+  15763f18... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  35cd1796... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  752250b2... -> cell (2, 1) = (1000, 600) mm  (stationary)
+  82116113... -> cell (4, 0) = (1800, 200) mm  (stationary)
+  af6ca578... -> cell (3, 1) = (1400, 600) mm  (stationary)
+  bcb3dfe7... -> cell (0, 1) = (200, 600) mm
+  c61037a3... -> cell (2, 4) = (1000, 1800) mm  (stationary)
+  d379c8b4... -> cell (1, 2) = (600, 1000) mm  (stationary)
+  d4bee461... -> cell (0, 0) = (200, 200) mm
+  e91cbc5a... -> cell (1, 0) = (600, 200) mm  (stationary)
+
+── Step 24 ──
+  15763f18... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  35cd1796... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  752250b2... -> cell (2, 1) = (1000, 600) mm  (stationary)
+  82116113... -> cell (4, 0) = (1800, 200) mm  (stationary)
+  af6ca578... -> cell (3, 1) = (1400, 600) mm  (stationary)
+  bcb3dfe7... -> cell (0, 2) = (200, 1000) mm
+  c61037a3... -> cell (2, 4) = (1000, 1800) mm  (stationary)
+  d379c8b4... -> cell (1, 2) = (600, 1000) mm  (stationary)
+  d4bee461... -> cell (0, 1) = (200, 600) mm
+  e91cbc5a... -> cell (1, 0) = (600, 200) mm  (stationary)
+
+── Step 25 ──
+  15763f18... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  35cd1796... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  752250b2... -> cell (2, 1) = (1000, 600) mm  (stationary)
+  82116113... -> cell (4, 0) = (1800, 200) mm  (stationary)
+  af6ca578... -> cell (3, 1) = (1400, 600) mm  (stationary)
+  bcb3dfe7... -> cell (0, 1) = (200, 600) mm
+  c61037a3... -> cell (2, 4) = (1000, 1800) mm  (stationary)
+  d379c8b4... -> cell (1, 2) = (600, 1000) mm  (stationary)
+  d4bee461... -> cell (0, 0) = (200, 200) mm
+  e91cbc5a... -> cell (1, 0) = (600, 200) mm  (stationary)
+
+── Step 26 ──
+  15763f18... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  35cd1796... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  752250b2... -> cell (2, 1) = (1000, 600) mm  (stationary)
+  82116113... -> cell (4, 0) = (1800, 200) mm  (stationary)
+  af6ca578... -> cell (3, 1) = (1400, 600) mm  (stationary)
+  bcb3dfe7... -> cell (0, 2) = (200, 1000) mm
+  c61037a3... -> cell (2, 4) = (1000, 1800) mm  (stationary)
+  d379c8b4... -> cell (1, 2) = (600, 1000) mm  (stationary)
+  d4bee461... -> cell (0, 1) = (200, 600) mm
+  e91cbc5a... -> cell (1, 0) = (600, 200) mm  (stationary)
+
+── Step 27 ──
+  15763f18... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  35cd1796... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  752250b2... -> cell (2, 1) = (1000, 600) mm  (stationary)
+  82116113... -> cell (4, 0) = (1800, 200) mm  (stationary)
+  af6ca578... -> cell (3, 1) = (1400, 600) mm  (stationary)
+  bcb3dfe7... -> cell (0, 1) = (200, 600) mm
+  c61037a3... -> cell (2, 4) = (1000, 1800) mm  (stationary)
+  d379c8b4... -> cell (1, 2) = (600, 1000) mm  (stationary)
+  d4bee461... -> cell (0, 0) = (200, 200) mm
+  e91cbc5a... -> cell (1, 0) = (600, 200) mm  (stationary)
+
+── Step 28 ──
+  15763f18... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  35cd1796... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  752250b2... -> cell (2, 1) = (1000, 600) mm  (stationary)
+  82116113... -> cell (4, 0) = (1800, 200) mm  (stationary)
+  af6ca578... -> cell (3, 1) = (1400, 600) mm  (stationary)
+  bcb3dfe7... -> cell (0, 2) = (200, 1000) mm
+  c61037a3... -> cell (2, 4) = (1000, 1800) mm  (stationary)
+  d379c8b4... -> cell (1, 2) = (600, 1000) mm  (stationary)
+  d4bee461... -> cell (0, 1) = (200, 600) mm
+  e91cbc5a... -> cell (1, 0) = (600, 200) mm  (stationary)
+
+── Step 29 ──
+  15763f18... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  35cd1796... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  752250b2... -> cell (2, 1) = (1000, 600) mm  (stationary)
+  82116113... -> cell (4, 0) = (1800, 200) mm  (stationary)
+  af6ca578... -> cell (3, 1) = (1400, 600) mm  (stationary)
+  bcb3dfe7... -> cell (0, 1) = (200, 600) mm
+  c61037a3... -> cell (2, 4) = (1000, 1800) mm  (stationary)
+  d379c8b4... -> cell (1, 2) = (600, 1000) mm  (stationary)
+  d4bee461... -> cell (0, 0) = (200, 200) mm
+  e91cbc5a... -> cell (1, 0) = (600, 200) mm  (stationary)
+
+── Step 30 ──
+  15763f18... -> cell (3, 4) = (1400, 1800) mm  (stationary)
+  35cd1796... -> cell (1, 3) = (600, 1400) mm  (stationary)
+  752250b2... -> cell (2, 1) = (1000, 600) mm  (stationary)
+  82116113... -> cell (4, 0) = (1800, 200) mm  (stationary)
+  af6ca578... -> cell (3, 1) = (1400, 600) mm  (stationary)
+  bcb3dfe7... -> cell (0, 2) = (200, 1000) mm
+  c61037a3... -> cell (2, 4) = (1000, 1800) mm  (stationary)
+  d379c8b4... -> cell (1, 2) = (600, 1000) mm  (stationary)
+  d4bee461... -> cell (0, 1) = (200, 600) mm
+  e91cbc5a... -> cell (1, 0) = (600, 200) mm  (stationary)
+
+Run 5: 9/10 at goal · 30 steps · 124.4s · 7 timeout(s) · overshoot mean 44 / max 236 mm
+
+============================================================
+SUMMARY — test_real_dotbot_pibt_10bots_5runs
+============================================================
+ Run   Steps   At Goal   All?   Time(s)   Timeouts
+   1      30  7/10          No     232.8         23
+   2       6  10/10         Yes      43.1          4
+   3       8  10/10         Yes      46.9          4
+   4       8  10/10         Yes      28.6          0
+   5      30  9/10          No     124.4          7
+
+Success rate : 60%
+Avg steps    : 16.4
+Avg time     : 95.2 s
+Avg bots@goal: 9.2/10
+
+CSV per-run → /home/dok/dotbot-logistics/results/l1_per_run.csv
+CSV summary → /home/dok/dotbot-logistics/results/l1_summary.csv

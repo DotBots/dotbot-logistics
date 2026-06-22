@@ -1,0 +1,47 @@
+\documentclass[sigconf, 9pt, nonacm]{acmart}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{graphicx}
+\usepackage{multirow}
+\usepackage{url}
+\usepackage{xspace}
+\usepackage{xcolor}
+\settopmatter{printacmref=false}
+
+\AtBeginDocument{%
+  \providecommand\BibTeX{{%
+    Bib\TeX}}}
+
+%\setcopyright{acmlicensed}
+%\acmYear{2025}
+%\copyrightyear{2025}
+%\acmDOI{XXXXXXX.XXXXXXX}
+%\acmISBN{978-1-4503-XXXX-X/25/03}
+%\acmConference[EWSN'25]{The 2025 Workshop on Crystal-Free/-Less Radio and System-based Research for IoT}{2025}{Leuven, Belgium}
+
+\title{PIBT on DotBots: Simulation-to-Hardware Gap in Swarm Intralogistics}
+\author{Corentin Rasda}
+\affiliation{\institution{ESIROI / Inria AIO}\country{France}}
+\email{rasdacorentin@gmail.com}
+
+\begin{document}
+\maketitle
+
+\input{rapport_simulation}
+
+\bibliographystyle{ACM-Reference-Format}
+\begin{thebibliography}{9}
+
+\bibitem{okumura22priority}
+K.~Okumura, M.~Machida, X.~Défago, and Y.~Tamura.
+\newblock Priority inheritance with backtracking for iterative multi-agent path finding.
+\newblock \emph{Artificial Intelligence}, 310:103752, 2023.
+
+\bibitem{alvarado24dotbot}
+F.~Alvarado et~al.
+\newblock DotBot: An open-source platform for swarm robotics research.
+\newblock 2024.
+
+\end{thebibliography}
+
+\end{document}

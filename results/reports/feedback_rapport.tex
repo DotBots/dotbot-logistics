@@ -1,0 +1,299 @@
+\documentclass[sigconf, 9pt, nonacm]{acmart}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{graphicx}
+\usepackage{multirow}
+\usepackage{url}
+\usepackage{xspace}
+\usepackage{xcolor}
+\usepackage{subcaption}
+\settopmatter{printacmref=false}
+
+\AtBeginDocument{%
+  \providecommand\BibTeX{{%
+    Bib\TeX}}}
+
+%\setcopyright{acmlicensed}
+%\acmYear{2025}
+%\copyrightyear{2025}
+%\acmDOI{XXXXXXX.XXXXXXX}
+%\acmISBN{978-1-4503-XXXX-X/25/03}
+%\acmConference[EWSN'25]{The 2025 Workshop on Crystal-Free/-Less Radio and System-based Research for IoT}{2025}{Leuven, Belgium}
+
+\graphicspath{{figs/}}
+
+\newcommand*{\todo}[1]          {\textcolor{red}{\textbf{[TODO]} #1}}
+
+\newcommand*{\lorem}            {\textcolor{green}{Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.}}
+
+\newcommand*{\thomas}[1]        {\textcolor{blue}{\textbf{[Thomas]} #1}}
+\newcommand*{\trifun}[1]        {\textcolor{blue}{\textbf{[Trifun]} #1}}
+\newcommand*{\corentin}[1]        {\textcolor{blue}{\textbf{[Corentin]} #1}}
+\newcommand*{\geovane}[1]        {\textcolor{blue}{\textbf{[Geovane]} #1}}
+\newcommand*{\malisa}[1]        {\textcolor{blue}{\textbf{[Malisa]} #1}}
+
+% permanent
+\newcommand{\firstauthor}       {Rasda\xspace}
+\newcommand{\etal}              {\emph{et~al.}\xspace}
+\newcommand{\name}              {\todo{}}
+
+
+
+\begin{document}
+
+\title{DotBot in the Warehouse: A Swarm Robotics Platform for Intralogistics Research}
+
+\author{Corentin Rasda}
+\email{corentin.rasda@inria.fr}
+\affiliation{%
+    \institution{Inria}
+    \city{Paris}
+    \country{France}
+}
+\author{Trifun Savi\'{c}}
+\email{trifun.savic@ucg.ac.me}
+\affiliation{%
+    \institution{University of Montenegro, Institute for Interdisciplinary and Multidisciplinary Studies}
+    \city{Podgorica}
+    \country{Montenegro}
+}
+\author{Geovane Fedrecheski}
+\email{geovane.fedrecheski@inria.fr}
+\affiliation{%
+    \institution{Inria}
+    \city{Paris}
+    \country{France}
+}
+
+\author{Mali\v{s}a~Vu\v{c}ini\'{c}}
+\email{malisa.vucinic@inria.fr}
+\affiliation{%
+    \institution{Inria}
+    \city{Paris}
+    \country{France}
+}
+
+\author{Thomas Watteyne}
+\email{thomas.watteyne@inria.fr}
+\affiliation{%
+    \institution{Inria}
+    \city{Paris}
+    \country{France}
+}
+
+\renewcommand{\shortauthors}{\firstauthor \etal}
+
+\begin{abstract}
+% abstract
+\lorem
+
+\end{abstract}
+
+\begin{CCSXML}
+<ccs2012>
+   <concept>
+       <concept_id>10010520.10010553.10010554.10010556</concept_id>
+       <concept_desc>Computer systems organization~Robotic control</concept_desc>
+       <concept_significance>500</concept_significance>
+       </concept>
+   <concept>
+       <concept_id>10003033</concept_id>
+       <concept_desc>Networks</concept_desc>
+       <concept_significance>500</concept_significance>
+       </concept>
+ </ccs2012>
+\end{CCSXML}
+
+\ccsdesc[500]{Networks}
+\ccsdesc[500]{Computer systems organization~Robotic control}
+
+\keywords{
+    Swarm robotics,
+    DotBot,
+    Intralogistics,
+    PBIT
+}
+\maketitle
+
+%==============================================================================
+\section{Introduction}
+\label{sec:introduction}
+
+% intro about swarms and intralogistics
+Swarm robotics trades a few heavily instrumented robots for many small, 
+    cheap units that coordinate in a decentralized way. 
+This allows the system throughput to scale with the size of the fleet rather than with per-unit capability.  \trifun{add a sentence why swarm robotics makes sense in logistics}
+Intralogistics,
+    automated warehouses and parcel-sorting floors of the Kiva type,
+    where mobile robots shuttle goods between storage and picking stations is its flagship application and the one we target here~\cite{wen18swarm}\cite{wurman08coordinating} .
+
+% logistics coordination algorithms
+The coordination kernel of such a fleet~\trifun{you need to introduce the new terms better, which fleet? Add a sentences before this one. Also keep sentences shorter, split them if you have to} is Multi-Agent Path Finding (MAPF). 
+MAPF routes $N$ agents from their start cells to $N$ distinct goal cells on a shared graph without vertex or swap collisions~\cite{stern19multi}.
+PIBT (Priority Inheritance with Backtracking) is an optimal MAPF, 
+    where deployed systems favour fast, 
+    scalable sub-optimal solvers~\cite{okumura22priority}.
+The PIBT plans a single synchronous step at a time,
+    which guarantees that every agent eventually reaches its goal on biconnected graphs.
+Also, 
+    the algorihm runs in a predictable, 
+    near-real-time computation properties that make it a natural fit for on-board, 
+    lifelong operation rather than offline batch planning~\trifun{I think that two sentences on PIBT are enough here, because you devote the entire section to it later. I would remove the last one.}.
+
+\begin{figure}
+    \centering
+    \begin{minipage}[c]{0.48\columnwidth}
+      \centering
+      \includegraphics[height=5cm, width=\linewidth, keepaspectratio]{figs/reel.jpg}
+    \subcaption{Real testbed}
+    \end{minipage}%
+    \hfill
+    \begin{minipage}[c]{0.48\columnwidth}
+      \centering
+      \includegraphics[height=5cm, width=\linewidth, keepaspectratio]{figs/screen.png}
+    \subcaption{Live visualization on screen}
+    \end{minipage}
+    \caption{DotBot testbed: a $2000\times2000$\,mm grid arena with DotBot robots
+             and a single Lighthouse\,v2 anchor. Left: the physical testbed;
+             right: live visualization displayed on screen. \trifun{zoom in on the right figure, maybe make both square shape, to have the same size, and then import. Give more detaled name to source files, screen is not a good one, dotbot-testbed-gui is a good one.}}
+    \Description[]{Left: photograph of the real DotBot testbed with several robots
+                   and one Lighthouse base station. Right: live visualization
+                   displayed on screen.}
+    \label{fig:demo_setup}
+  \end{figure}
+
+% dotbot
+The DotBot is an open-source, 
+    low-cost wheeled micro-robot. 
+It is localized by a single Lighthouse\,v2 (LH2) base station and networked through MARI, 
+    a TSCH-over-BLE mesh protocol, 
+    giving sparse external positioning and constrained, contention-prone communication  exactly the regime a real deployment must tolerate~\cite{alvarado24dotbot}\trifun{split sentences, too long.}
+
+% proposed work and results
+\trifun{I am missing a sentence of why PIBT with the DotBot is good, for example easy to implement on a resource constrained devices, or because it is the state of the art in intralogistics coordination algorithms...}.
+We validate PIBT for DotBot warehouse-style coordination at two levels on a shared occupancy axis $\rho = N/\text{cells}$: \emph{L0}, 
+    an abstract-grid simulation that fixes the algorithmic ceiling, 
+    and \emph{L1}, 
+    the same planner driving real DotBots.
+Joining the two on $\rho$ quantifies the \textbf{plan-to-real gap} \trifun{what is plan-to-real, you need to introduce it before}.
+Our thesis\trifun{our approach confirms or this work shows, thesis is not the right word} is that the simulated ceiling does not survive contact with hardware: the simulation predicts cheap, 
+    near-linear coordination up to an efficiency knee at $\rho \approx 0.60$, 
+    yet real per-instance reliability already collapses at $\rho \approx 0.30$, 
+    roughly half the simulated value \trifun{sentences too long}.
+
+\trifun{follow the text formating I used in the introduction and apply to all the text}
+%==============================================================================
+\section{PIBT Algorithm}
+\label{sec:pbit}
+
+\begin{figure*}
+  \centering
+  \includegraphics[width=\textwidth]{figs/fig2_success_vs_occupancy}
+  \caption{Plan-to-real gap on the $5\times5$ grid.
+           \textbf{Left (L0, simulation):} mean makespan and sum-of-costs per agent
+           (SoC/$N$) stay near-linear up to the cost knee at $\rho\approx0.60$, then
+           accelerate --- the algorithmic ceiling.
+           \textbf{Right (L1, real DotBots):} per-instance success holds $100\%$ up to
+           $\rho=0.28$ (blue) then collapses to $96/80/71\%$ at
+           $\rho=0.32/0.36/0.40$ (red), past the reliability ceiling at
+           $\rho\approx0.30$. The real fleet breaks down at roughly half the occupancy
+           the simulation still deems efficient. \trifun{it is not super clear to me why we have different graphs for simulation and real experiments. We want to show how the PIBT behaves in simulation and in reality right? Also in the plot on the right there is a legend mising to explain what the colors mean. Also be consistent, why is simulation per agent and in real experiment you say per instance...}}
+  \Description[]{Two panels. Left: two rising line plots (makespan and sum-of-costs per
+                 agent) against occupancy, with a dotted vertical marker at occupancy
+                 0.60 where the slope sharply increases. Right: a bar chart of
+                 per-instance success rate, full height up to occupancy 0.28 then
+                 dropping after a dashed vertical marker at occupancy 0.30.}
+  \label{fig:results}
+\end{figure*}
+
+PIBT solves MAPF iteratively by prioritized planning in a unit-length time
+  window~\cite{okumura22priority}. At each timestep every agent carries a unique priority
+  and the agents commit to their next cell in decreasing priority order, each choosing the
+  neighbouring cell closest to its goal that no higher-priority agent has reserved. When a
+  high-priority agent is blocked by a lower-priority one, the blocker temporarily
+  \emph{inherits} the higher priority and is forced to give way; if it then finds no valid
+  move, it \emph{backtracks} and the caller tries its next candidate. On any graph where
+  every pair of adjacent nodes lies on a simple cycle  an obstacle-free rectangular grid
+  is biconnected and qualifies  this scheme guarantees \emph{reachability}: every agent
+  reaches its goal within finite time, although not necessarily all at the same timestep.
+
+  One planning step costs $\mathcal{O}\!\left(|A|\,(\Delta(G)+\log|A|)\right)$ and stays
+  within a few milliseconds even for hundreds of agents, so the per-step runtime is
+  predictable. Because every decision is a local interaction between neighbouring agents,
+  PIBT extends to lifelong pickup-and-delivery (MAPD)~\cite{okumura22priority}, 
+  the formulation closest to a working warehouse.
+
+
+%==============================================================================
+\section{Results}
+\label{sec:results}
+  
+\textbf{Setup.}
+ The same PIBT planner drives both levels. The physical arena is $2000\times2000$\,mm
+  with a single LH2 anchor. L1 sweeps a $5\times5$ grid (25 cells, $400$\,mm). 
+  DotBots are commanded one synchronous PIBT step at a time through a barrier:
+  Dotbots are sent to their next cells, and the loop waits until every bot
+  is within a $75$\,mm arrival threshold or an $8$\,s per-step timeout 
+  elapses, re-synchronising each bot's cell from LH2 before the next step.
+  Commands go through the PyDotBot stack~\cite{abadie24qrkey} over MARI/LH2~\cite{alvarado24dotbot}.
+  We place one DotBot per cell and draw goals at random per seed. The
+  hardware logs hold \textbf{8 configurations} ($N=4$--$10$ on the $5\times5$ grid plus
+  $N=4$ on the $8\times8$ grid) over \textbf{67 runs} total.
+
+  % [Évaluation]
+  \textbf{Evaluation.}
+  For each run we log makespan (steps), wall-time (s), step-timeouts
+  (bot\,$\times$\,step events that miss the $8$\,s barrier), overshoot (mean/max stop
+  distance to the target cell, mm) and throughput (goals\,/\,min). We separate two notions
+  of success: \emph{per-agent} $=$ arrived$/N$, and \emph{per-instance} $=$ all $N$ arrived.
+  Only the per-instance notion is comparable to L0 and to Okumura's reachability criterion,
+  so we report it as the headline metric.
+
+\textbf{L0 the algorithmic ceiling.}
+On the $5 \times 5$ grid, the per-agent success rate remains high, varying from
+$98.3\%$ at $\rho = 0.08$ to $92.1\%$ at $\rho = 1.00$. Most failures are 
+caused by the $100$-step cap being too restrictive rather than by limitations 
+of PIBT itself, which is guaranteed to eventually reach the goal. The informative ceiling 
+is therefore in \emph{cost}, not success. Both sum-of-costs and mean makespan remain
+near-linear up to $\rho=0.60$ ($N=15$: makespan $9.1$ steps, sum-of-costs $60.2$, detour
+ratio $1.46$) and then accelerate sharply ($\rho=0.80$: makespan $14.6$, sum-of-costs
+$101.7$; $\rho=1.00$: makespan $27.3$, sum-of-costs $250.7$). This $\rho\approx0.60$ knee
+is the algorithmic upper bound the densest packing at which the planner still keeps
+per-robot cost proportional to travel distance.
+
+\textbf{L1 real DotBots.}
+Per-instance success is $100\%$ for $N=4$--$7$ ($\rho\le0.28$): all $25$ runs delivered
+every agent, with makespans of $5.2$--$7.8$ steps, $16$--$35$\,s wall-time, $69$--$90$\,mm
+mean overshoot and $\le2$ step-timeouts per run. It then degrades monotonically with
+density: $96.3\%$ at $N=8$ ($\rho=0.32$, $26/27$ runs), $80\%$ at $N=9$ ($\rho=0.36$,
+$4/5$) and $71\%$ at $N=10$ ($\rho=0.40$, $5/7$). The degradation is physical, not
+algorithmic, and three mechanisms compound. (i)~\emph{Footprint versus cell size}: a
+DotBot needs room for a half-turn to reach the next waypoint; in tight cells it overshoots
+the $75$\,mm threshold (mean overshoot stays $56$--$90$\,mm, with maxima above $600$\,mm),
+the step barrier times out (timeouts climb from $\approx2$ to $5$ to $7$ per run over
+$N=8\!\to\!10$, wall-time from $43$ to $90$\,s), and the next replan sends it back
+trapping it in a two-cell oscillation. (ii)~\emph{Timeout
+cascade}: because PIBT advances as one synchronous step, a single bot that misses the
+barrier desynchronises its neighbours' reserved cells and breaks the local coherence PIBT
+depends on, so one initial timeout can fail several agents at once. (iii)~\emph{Residual
+rotations}: our planner forbids 2-agent swaps but not general $3{+}$-agent rotations (no
+PIBT$'$), which on hardware surface as the very oscillations we observe. The net effect is
+a real per-instance reliability ceiling at $\rho\approx0.30$ about half the simulated
+cost knee at $\rho\approx0.60$ with throughput peaking near $24$ goals\,/\,min at
+$N=6$ and falling to $\approx10$ goals\,/\,min once $N=10$ pushes the fleet past that
+ceiling.
+
+\section{Conclusion \& Future Work}
+\label{sec:conclusion}
+
+%==============================================================================
+\section*{Acknowledgment}
+
+This project has received funding from
+    the European Union's Horizon Europe Framework Program, project ``OpenSwarm'', under Grant Agreement No.~101093046. \trifun{not sure if we include this acknowledgment}
+
+\bibliographystyle{IEEEtran}
+\bibliography{rasda26dotbot}
+
+\end{document}
+

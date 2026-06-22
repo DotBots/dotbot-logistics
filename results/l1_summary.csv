@@ -1,7 +1,9 @@
 script_name,grid_w,grid_h,cell_mm,n_agents,occupancy,num_runs,success_rate_mean,success_rate_ci95,avg_steps,avg_time_s,avg_overshoot_mm,timeout_rate,avg_throughput_per_min,avg_conflict_ratio,avg_mean_step_time_free_s,avg_mean_step_time_conflict_s
+test_real_dotbot_pibt_10bots_5runs,5,5,400,10,0.4,7,0.9429,0.084,16.0,89.56,62.34,6.714,9.99,0.0,0.0,0.0
 test_real_dotbot_pibt_4bots_5runs,5,5,400,4,0.16,5,1.0,0.0,7.0,26.85,90.17,1.4,10.97,0.0,0.0,0.0
 test_real_dotbot_pibt_4bots_5runs,8,8,250,4,0.0625,3,1.0,0.0,12.67,54.22,76.7,3.333,5.91,0.0,0.0,0.0
 test_real_dotbot_pibt_5bots_5runs,5,5,400,5,0.2,10,1.0,0.0,7.0,30.65,86.75,1.9,13.43,0.0,0.0,0.0
 test_real_dotbot_pibt_6bots_5runs,5,5,400,6,0.24,5,1.0,0.0,5.2,16.11,69.06,0.2,24.24,0.0,0.0,0.0
 test_real_dotbot_pibt_7bots_5runs,5,5,400,7,0.28,5,1.0,0.0,7.8,34.94,84.08,2.0,15.9,0.0,0.0,0.0
 test_real_dotbot_pibt_8bots_5runs,5,5,400,8,0.32,27,0.9907,0.0181,9.15,43.11,58.88,2.111,15.03,0.0,0.0,0.0
+test_real_dotbot_pibt_9bots_5runs,5,5,400,9,0.36,5,0.9778,0.0436,13.8,69.81,55.89,5.0,14.89,0.0,0.0,0.0
