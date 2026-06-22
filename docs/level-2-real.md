@@ -93,18 +93,18 @@ under evaluation on hardware.
 ## Reproducing the experiments
 
 The batch harness runs many seeded trials at a fixed bot count and records per-run metrics
-and a summary under `results/`:
+and a summary under `log/`:
 
 ```bash
-python results/test_real_dotbot_pibt.py --bots 4 --runs 5
-python results/test_real_dotbot_pibt.py --bots 8           # 8 bots, 5 runs (default)
+python log/test_real_dotbot_pibt.py --bots 4 --runs 5
+python log/test_real_dotbot_pibt.py --bots 8           # 8 bots, 5 runs (default)
 ```
 
 Each invocation writes:
 
-- a raw run log to `results/raw_logs/`,
-- per-run rows to `results/l1_per_run.csv`,
-- an aggregated `results/l1_summary.csv`.
+- a raw run log to `log/raw_logs/`,
+- per-run rows to `log/l1_per_run.csv`,
+- an aggregated `log/l1_summary.csv`.
 
 The experiment sweeps cell size on a fixed 2000 × 2000 mm arena (4×4 / 5×5 / 8×8) and
 overlays the result against the Level 0 sweep.
