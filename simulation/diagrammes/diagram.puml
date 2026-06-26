@@ -147,6 +147,7 @@ package "algo" #F0FFF0 {
     class PIBT {
         + goals           : dict[Agent, Position]
         + priorities      : dict[Agent, float]
+        + base_priorities : dict[Agent, float]
         - _next           : dict[Agent, Position]
         - _processed      : set[Agent]
         - _grid           : Grid | None
@@ -162,6 +163,49 @@ package "algo" #F0FFF0 {
     }
 }
 
+' ── MRTA layer (planned — RoadmapMRTA.md) ─────────────────────────────
+' Independent package above algo/: may import core + algo, keeps them pure.
+package "mrta" #FFF0F5 {
+
+    enum TaskState {
+        PENDING
+        ASSIGNED
+        DONE
+    }
+
+    class Task {
+        + task_id      : int
+        + target       : Position
+        + priority     : float
+        + state        : TaskState
+        + assignee     : Agent | None
+        + created_step : int
+    }
+
+    abstract class TaskSource {
+        + poll(current_step: int) : list[Task]
+    }
+
+    class CNPAllocator {
+        --
+        + allocate(pending: list[Task], free: list[Agent], grid: Grid) : dict[Task, Agent]
+        - _bid(agent: Agent, task: Task, grid: Grid) : float
+    }
+
+    class TaskDispatcher {
+        + source     : TaskSource
+        + allocator  : CNPAllocator
+        + pibt       : PIBT
+        + tasks      : list[Task]
+        --
+        + dispatch(agents: list[Agent], grid: Grid, step: int) : void
+        + set_priority(task_id: int, priority: float) : void
+        - _intake(step: int) : void
+        - _allocate(agents: list[Agent], grid: Grid) : void
+        - _complete(agents: list[Agent]) : void
+    }
+}
+
 Renderer "1" o-- "1" Simulation : sim
 Renderer ..> WorldEntity : reads
 PIBTRenderer --|> Renderer : extends
@@ -174,5 +218,16 @@ PIBTInteractiveRenderer ..> StepSnapshot       : builds
 RandomWalkCoordinator --|> Coordinator : implements
 PIBT --|> Coordinator : implements
 PIBT "1" o-- "0..*" Agent : priorities\ngoals
+
+' ── MRTA relations (planned) ──────────────────────────────────────────
+Task "1" *-- "1" TaskState : state
+Task "1" o-- "1" Position  : target
+Task "0..*" o-- "0..1" Agent : assignee
+TaskDispatcher "1" o-- "1" TaskSource   : source
+TaskDispatcher "1" o-- "1" CNPAllocator : allocator
+TaskDispatcher "1" o-- "1" PIBT         : drives goals + base_priorities
+TaskDispatcher "1" *-- "0..*" Task      : tasks
+CNPAllocator ..> Task  : bids on
+CNPAllocator ..> Agent : assigns
 
 @enduml
