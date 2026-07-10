@@ -82,7 +82,10 @@ package "core" #EAF4FF {
 
     abstract class Coordinator {
         + plan(agents: list[Agent], grid: Grid) : dict[int, Position]
+        + set_goal(agent: Agent, target: Position) : void
+        + set_priority(agent: Agent, priority: float) : void
     }
+    ' set_goal/set_priority: concrete no-op defaults (planned, RoadmapMRTA.md) — PIBT overrides both
 
     WorldEntity <|-- Agent
     WorldEntity <|-- Objective
@@ -156,6 +159,8 @@ package "algo" #F0FFF0 {
         + _last_inheritance : list[tuple]
         --
         + plan(agents: list[Agent], grid: Grid) : dict[int, Position]
+        + set_goal(agent: Agent, target: Position) : void
+        + set_priority(agent: Agent, priority: float) : void
         - _init_priorities_if_needed(agents) : void
         - _h(pos: Position, agent: Agent) : int
         - _reserving_agent(pos: Position) : Agent | None
@@ -164,7 +169,8 @@ package "algo" #F0FFF0 {
 }
 
 ' ── MRTA layer (planned — RoadmapMRTA.md) ─────────────────────────────
-' Independent package above algo/: may import core + algo, keeps them pure.
+' Independent package above core/: depends only on core (via Coordinator);
+' never imports algo/ or client/ — decoupled from any concrete algorithm.
 package "mrta" #FFF0F5 {
 
     enum TaskState {
@@ -186,17 +192,32 @@ package "mrta" #FFF0F5 {
         + poll(current_step: int) : list[Task]
     }
 
-    class CNPAllocator {
-        --
+    abstract class Allocator {
         + allocate(pending: list[Task], free: list[Agent], grid: Grid) : dict[Task, Agent]
-        - _bid(agent: Agent, task: Task, grid: Grid) : float
     }
 
-    class TaskDispatcher {
-        + source     : TaskSource
-        + allocator  : CNPAllocator
-        + pibt       : PIBT
-        + tasks      : list[Task]
+    class RandomAllocator {
+        --
+        + allocate(pending: list[Task], free: list[Agent], grid: Grid) : dict[Task, Agent]
+    }
+    note right of RandomAllocator : baseline for tests
+
+    class KDTreeGreedyAllocator {
+        - _tree : KDTree
+        --
+        + allocate(pending: list[Task], free: list[Agent], grid: Grid) : dict[Task, Agent]
+        - _nearest_free(task: Task, free: list[Agent]) : Agent
+    }
+    note right of KDTreeGreedyAllocator
+      Centralized greedy assignment: nearest free robot
+      via scipy.spatial.cKDTree, O(log n). Tie-break by agent_id.
+    end note
+
+    class FleetManager {
+        + source      : TaskSource
+        + allocator   : Allocator
+        + coordinator : Coordinator
+        + tasks       : list[Task]
         --
         + dispatch(agents: list[Agent], grid: Grid, step: int) : void
         + set_priority(task_id: int, priority: float) : void
@@ -223,11 +244,16 @@ PIBT "1" o-- "0..*" Agent : priorities\ngoals
 Task "1" *-- "1" TaskState : state
 Task "1" o-- "1" Position  : target
 Task "0..*" o-- "0..1" Agent : assignee
-TaskDispatcher "1" o-- "1" TaskSource   : source
-TaskDispatcher "1" o-- "1" CNPAllocator : allocator
-TaskDispatcher "1" o-- "1" PIBT         : drives goals + base_priorities
-TaskDispatcher "1" *-- "0..*" Task      : tasks
-CNPAllocator ..> Task  : bids on
-CNPAllocator ..> Agent : assigns
+
+Allocator <|.. RandomAllocator      : implements
+Allocator <|.. KDTreeGreedyAllocator : implements
+Allocator ..> Task  : allocates
+Allocator ..> Agent : assigns
+
+FleetManager "1" o-- "1" TaskSource   : source
+FleetManager "1" o-- "1" Allocator    : allocator
+FleetManager "1" o-- "1" Coordinator  : coordinator
+FleetManager "1" *-- "0..*" Task      : tasks
+FleetManager ..> Coordinator : set_goal() / set_priority()
 
 @enduml
