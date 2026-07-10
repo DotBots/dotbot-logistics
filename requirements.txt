@@ -1,3 +1,4 @@
 pydotbot[calibrate]
 requests>=2.31
 pygame>=2.5
+scipy>=1.11  # mrta/KDTreeGreedyAllocator (K-D tree nearest-neighbor allocation)
