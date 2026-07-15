@@ -216,3 +216,40 @@ with a per-step timeout, threshold = 100 mm
 [BSD 3-Clause](LICENSE)
 
 [pydotbot-doc]: https://pydotbot.readthedocs.io/en/latest/
+
+#### Debug 
+### Debugging: WSL Not Detecting TTY
+
+If you have performed the `usbipd` attach command but your WSL instance is not detecting the device (e.g., no `/dev/ttyUSB0` or `/dev/ttyACM0` appears), follow these steps to troubleshoot:
+
+## Initial Setup Checklist
+
+Ensure the following commands have been executed correctly:
+
+* **Install usbipd on Windows (PowerShell as Admin):**
+```powershell
+winget install --source winget dorssel.usbipd-win
+
+```
+
+
+* **List Devices (PowerShell):**
+```powershell
+usbipd list
+
+```
+
+
+* **Bind the Device (PowerShell as Admin):**
+*This authorizes Windows to share the device with WSL.*
+```powershell
+usbipd bind --busid <BUSID>
+
+```
+
+
+* **Attach to WSL (PowerShell):**
+```powershell
+usbipd attach --wsl --busid <BUSID>
+
+```
