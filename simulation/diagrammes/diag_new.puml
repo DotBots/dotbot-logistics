@@ -1,0 +1,251 @@
+@startuml simulation_class_diagram
+
+title Simulation — Diagramme de classes
+
+skinparam classAttributeIconSize 0
+skinparam classFontSize 13
+skinparam ArrowColor #333333
+skinparam ClassBorderColor #4A90D9
+skinparam ClassBackgroundColor #EAF4FF
+skinparam ClassHeaderBackgroundColor #4A90D9
+skinparam ClassHeaderFontColor #FFFFFF
+skinparam PackageBorderColor #888888
+skinparam PackageBackgroundColor #F8F8F8
+
+package "core" #EAF4FF {
+
+    package "entities" {
+        class Position {
+            + x : int
+            + y : int
+            --
+            + __add__(other: Position) : Position
+            + __repr__() : str
+        }
+
+        abstract class WorldEntity {
+            + entity_id      : int
+            + position       : Position
+            + appear_at      : int
+            + blocks_movement : bool
+            --
+            + active : bool
+        }
+
+        class Agent {
+            + agent_id    : int
+            + steps_taken : int
+            --
+            + move_to(new_position: Position) : void
+            + __eq__(other: object) : bool
+            + __hash__() : int
+            + __repr__() : str
+        }
+    }
+
+    package "environment" {
+        class Grid {
+            + width  : int
+            + height : int
+            - _agents : dict[Position, Agent]
+            - _static : dict[Position, list[WorldEntity]]
+            --
+            + is_valid(position: Position) : bool
+            + is_blocked(position: Position) : bool
+            + place(entity: WorldEntity) : void
+            + remove(entity: WorldEntity) : void
+            + move(agent: Agent, new_position: Position) : bool
+            + get_agent_at(position: Position) : Agent | None
+            + get_entities_at(position: Position, kind) : list[WorldEntity]
+            + get_all(kind) : list[WorldEntity]
+            + __repr__() : str
+        }
+    }
+
+    package "engine" {
+        class Simulation {
+            + grid         : Grid
+            + agents       : list[Agent]
+            + entities     : list[WorldEntity]
+            - _pending     : list[WorldEntity]
+            + current_step : int
+            + coordinator  : Coordinator
+            --
+            + add_agent(agent: Agent) : void
+            + add_object(entity: WorldEntity) : void
+            + step() : void
+            + __repr__() : str
+        }
+
+        abstract class Coordinator {
+            + plan(agents: list[Agent], grid: Grid) : dict[int, Position]
+            + set_goal(agent: Agent, target: Position) : void
+            + set_priority(agent: Agent, priority: float) : void
+        }
+    }
+}
+
+package "client" #FFF5EA {
+
+    class Renderer {
+        + sim : Simulation
+        --
+        + run(steps: int, pause: float) : void
+        - _draw(screen, font, font_sm, font_hdr, w, h) : void
+    }
+
+    class PIBTRenderer {
+        --
+        - _draw(screen, font, font_sm, font_hdr, w, h) : void
+    }
+
+    class StepSnapshot {
+        + step        : int
+        + positions   : dict[int, Position]
+        + priorities  : dict[int, float]
+        + order       : list[int]
+        + moves       : dict[int, tuple]
+        + inheritance : list[tuple]
+        + objects     : list[tuple]
+        + goals       : dict[int, Position]
+    }
+
+    class PIBTInteractiveRenderer {
+        + sim  : Simulation
+        --
+        + run(steps: int, auto_ms: int) : void
+        - _build_history(steps: int) : list[StepSnapshot]
+        - _snapshot_objects() : list[tuple]
+        - _run_loop(history, auto_ms) : void
+        - _draw_header(...) : void
+        - _draw_grid(...) : void
+        - _draw_footer(...) : void
+    }
+}
+
+package "mrta" #FFF0F5 {
+
+    enum TaskState {
+        PENDING
+        ASSIGNED
+        DONE
+    }
+
+    class Task {
+        + task_id      : int
+        + target       : Position
+        + priority     : float
+        + state        : TaskState
+        + assignee     : Agent | None
+        + created_step : int
+    }
+
+    abstract class TaskSource {
+        + poll(current_step: int) : list[Task]
+    }
+
+    abstract class Allocator {
+        + allocate(pending: list[Task], free: list[Agent], grid: Grid) : dict[Task, Agent]
+    }
+
+    class FleetManager {
+        + source      : TaskSource
+        + allocator   : Allocator
+        + coordinator : Coordinator
+        + tasks       : list[Task]
+        --
+        + dispatch(agents: list[Agent], grid: Grid, step: int) : void
+        + set_priority(task_id: int, priority: float) : void
+        - _intake(step: int) : void
+        - _allocate(agents: list[Agent], grid: Grid) : void
+        - _complete(agents: list[Agent]) : void
+    }
+}
+
+package "algo" #F0FFF0 {
+
+    package "coordination" {
+        class RandomWalkCoordinator {
+            --
+            + plan(agents: list[Agent], grid: Grid) : dict[int, Position]
+        }
+
+        class ReservationTable {
+            - _reserved : dict[Position, Agent]
+            --
+            + reserve(agent: Agent, pos: Position) : void
+            + get_reserving_agent(pos: Position) : Agent | None
+            + clear() : void
+        }
+
+        class PriorityManager {
+            - _base : dict[Agent, float]
+            - _dynamic : dict[Agent, float]
+            --
+            + update(agents: list[Agent]) : void
+            + get_priority(agent: Agent) : float
+            + set_base(agent: Agent, p: float) : void
+        }
+
+        class PIBTCoordinator {
+            + goals        : dict[Agent, Position]
+            - _reservations: ReservationTable
+            - _priorities  : PriorityManager
+            - _processed   : set[Agent]
+            --
+            + plan(agents: list[Agent], grid: Grid) : dict[int, Position]
+            + set_goal(agent: Agent, target: Position) : void
+            + set_priority(agent: Agent, priority: float) : void
+            - _pibt(agent: Agent, parent: Agent | None) : bool
+            - _h(pos: Position, agent: Agent) : int
+        }
+    }
+
+    package "allocation" {
+        class RandomAllocator {
+            --
+            + allocate(pending: list[Task], free: list[Agent], grid: Grid) : dict[Task, Agent]
+        }
+
+        class KDTreeGreedyAllocator {
+            - _tree : KDTree
+            --
+            + allocate(pending: list[Task], free: list[Agent], grid: Grid) : dict[Task, Agent]
+            - _nearest_free(task: Task, free: list[Agent]) : Agent
+        }
+    }
+}
+
+' ── Simplified High-Level Relations ─────────────────────────────
+
+WorldEntity <|-- Agent
+WorldEntity *-- Position
+Grid o-- WorldEntity
+Simulation *-- Grid
+Simulation *-- Agent
+Simulation *-- WorldEntity
+Simulation *-- Coordinator
+
+Task *-- TaskState
+
+Renderer o-- Simulation
+Renderer <|-- PIBTRenderer
+
+PIBTInteractiveRenderer o-- Simulation
+PIBTInteractiveRenderer ..> StepSnapshot
+
+Coordinator <|-- RandomWalkCoordinator
+Coordinator <|-- PIBTCoordinator
+
+PIBTCoordinator *-- ReservationTable
+PIBTCoordinator *-- PriorityManager
+
+Allocator <|-- RandomAllocator
+Allocator <|-- KDTreeGreedyAllocator
+
+FleetManager o-- TaskSource
+FleetManager o-- Allocator
+FleetManager o-- Coordinator
+FleetManager *-- Task
+
+@enduml
