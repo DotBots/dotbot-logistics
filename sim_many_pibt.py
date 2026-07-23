@@ -26,8 +26,8 @@ from collections import defaultdict
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "simulation"))
 
-from core import Simulation, Agent, Grid, Position
-from algo.pibt import PIBT
+from core import Simulation, Agent, Grid, Position, StaticDispatcher
+from algo import PIBTCoordinator
 
 # ── Defaults ──────────────────────────────────────────────────────────────────
 
@@ -69,8 +69,11 @@ def run_instance(gw: int, gh: int, n: int, seed: int) -> dict:
     goal_map = {agents[i]: Position(*goals_pos[i]) for i in range(n)}
     optimal  = [_manhattan(agents[i].position, goal_map[agents[i]]) for i in range(n)]
 
-    pibt = PIBT(goals=goal_map)
-    sim  = Simulation(Grid(gw, gh), coordinator=pibt)
+    # StaticDispatcher/DispatchIntent are agent_id-keyed, not Agent-keyed.
+    goal_map_by_id = {agent.agent_id: pos for agent, pos in goal_map.items()}
+    pibt = PIBTCoordinator()
+    dispatcher = StaticDispatcher(goals=goal_map_by_id)
+    sim  = Simulation(Grid(gw, gh), coordinator=pibt, dispatcher=dispatcher)
     for a in agents:
         sim.add_agent(a)
 
