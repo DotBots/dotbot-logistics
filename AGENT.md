@@ -36,23 +36,27 @@ git history (`git log --all --full-history -- RoadmapMRTA.md`).
 `Objective` removed in favour of `Zone`, `algo/pibt.py` replaced by
 `algo/coordination/pibt_coordinator.py`'s `PIBTCoordinator`, and goals/priorities are now
 injected per tick via a `DispatchIntent` instead of the old `PIBT(goals=..., initial_priorities=...)`
-constructor. **None of the root-level bridge scripts were migrated.** Confirmed by direct
-import/run on 2026-07-23:
+constructor. `sim_pibt.py` and `sim_dotbot_pibt.py` have since been migrated (2026-07-23) onto
+`PIBTCoordinator` + `StaticDispatcher`, following the `simulation/demo_pibt.py` pattern — goals
+and priorities are now keyed by `agent_id` (int), not `Agent` objects. `sim_pibt.py`'s old
+`Objective` obstacle (a collectible, owner-able entity) was dropped rather than replaced: that
+entity type has no post-refactor equivalent (`Zone` is never collectible). **The remaining
+root-level scripts are still unmigrated:**
 
 | Script | Status | Fails with |
 |---|---|---|
-| `sim_pibt.py` | broken | `ImportError: cannot import name 'Objective' from 'core'` |
+| `sim_pibt.py` | **fixed** (2026-07-23) | migrated to `PIBTCoordinator`/`StaticDispatcher` |
+| `sim_dotbot_pibt.py` | **fixed** (2026-07-23) | migrated to `PIBTCoordinator`/`StaticDispatcher` |
 | `sim_many_pibt.py` (root) | broken | `ModuleNotFoundError: No module named 'algo.pibt'` |
-| `sim_dotbot_pibt.py` | broken | same `algo.pibt` error |
-| `real_dotbot_pibt.py` | broken | same `algo.pibt` error (shares the `sim_dotbot_pibt.py` pattern) |
+| `real_dotbot_pibt.py` | broken | same `algo.pibt` error (shares the `sim_dotbot_pibt.py` pattern, same fix applies) |
 | `real_dotbot_pibt_batch.py` | broken | same `algo.pibt` error |
 | `simulation/demo_pibt.py`, `simulation/main.py` | **working** | migrated, exercise the current engine |
 
-If you are asked to fix or extend one of the broken scripts, migrating its import
+If you are asked to fix or extend one of the still-broken scripts, migrating its import
 (`algo.pibt.PIBT` → `algo.coordination.pibt_coordinator.PIBTCoordinator`, goals/priorities
-delivered via `DispatchIntent` rather than the constructor) is a prerequisite, not a side effect
-— treat it as its own commit. Do not assume a script works because it looks structurally
-complete; re-run it.
+delivered via `DispatchIntent`/`StaticDispatcher` rather than the constructor, keyed by
+`agent_id` not `Agent`) is a prerequisite, not a side effect — treat it as its own commit. Do not
+assume a script works because it looks structurally complete; re-run it.
 
 **Two `sim_many_pibt.py` exist and are not interchangeable**: the root one (above, broken,
 writes `l0_results.csv`) and `simulation/sim_many_pibt.py` (current, targets the migrated engine,
