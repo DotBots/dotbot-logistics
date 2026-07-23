@@ -1,9 +1,10 @@
 # AGENT.md
 
 > Project map for coding agents working in `dotbot-logistics`. Read this before touching any
-> root-level script. `simulation/` is its own sub-project with its own
-> `CLAUDE.md`/`AGENT.md`/`CONVENTION.md` — read those when you cross into `simulation/`; this
-> file does not repeat them.
+> root-level script. Per-folder documentation rule (see "Rules and invariants" below): `simulation/`
+> is its own sub-project with its own `CLAUDE.md`/`AGENT.md`/`CONVENTION.md` — read those when you
+> cross into `simulation/`, and likewise for any other folder that grows its own `AGENT.md`
+> (e.g. `simulation/mrta/AGENT.md`). This file does not repeat folder-local guides.
 
 ## What this project is
 
@@ -72,7 +73,7 @@ in the same commit — an agent map that lies is worse than no map.)*
 ├── CLAUDE.md                   — pointer that imports AGENT.md
 ├── CONVENTION.md                — git/branch/commit/issue conventions (repo-wide)
 ├── README.md                    — human-facing overview, install, script reference
-├── requirements.txt             — pydotbot[calibrate], requests, pygame
+├── requirements.txt             — pydotbot[calibrate], requests, pygame, scipy, websockets
 ├── dotbot.toml                  — pydotbot CLI config (MQTT broker, swarm id)
 ├── mosquitto.conf               — local MQTT broker config for L2
 ├── mkdocs.yml                   — config for the docs/ site
@@ -178,6 +179,14 @@ credentials go in env vars `DOTBOT_MQTT_USER` / `DOTBOT_MQTT_PASS`.
 
 ## Rules and invariants
 
+- **A folder with its own `AGENT.md` must have it read before working inside it.** Not just
+  `simulation/` as a special case — this is the general rule `simulation/`'s own layout already
+  follows one level down (`core/AGENT.md`, `algo/AGENT.md`, `mrta/AGENT.md`, `client/AGENT.md`,
+  `report/AGENT.md`, each read on demand only when touching that specific package — see
+  `simulation/AGENT.md`'s "Package guides" table). Any folder in this repo may grow its own
+  `AGENT.md` the same way; check for one (`ls <folder>/AGENT.md`) before making changes inside a
+  folder you have not worked in during this session, and do not assume this root file already
+  covers it — a folder-local guide holds the detail this one deliberately does not repeat.
 - **1 action = 1 commit**: each logically distinct change (fix, migration, doc batch) is its own
   commit — see `CONVENTION.md`.
 - **No push without explicit user request** in the same message.
