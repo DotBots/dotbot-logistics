@@ -57,7 +57,7 @@ DEFAULT_CELL_MM = None      # cell size in mm; if None, derived from map_size / 
 DEFAULT_MAP_CELLS = 5       # grid resolution NxN (5 -> 400 mm cells, 8 -> 250 mm on 2000x2000)
 DEFAULT_THRESHOLD = 100     # mm — bot considered "arrived" when distance < threshold.
                             # 100 mm: < half-cell (200 mm), > LH2 noise (~20 mm).
-DEFAULT_STEP_TIMEOUT = 8.0  # s — max wait per PIBT step
+DEFAULT_STEP_TIMEOUT = 4.0  # s — max wait per PIBT step
 DEFAULT_SETTLE = 0.3        # s — pause after arrival to let bots stop moving
 DEFAULT_IDLE_SLEEP = 0.2    # s — pace of the idle/no-movement backoff loop
 DEFAULT_RECONCILE_INTERVAL = 2.0  # s — period of the REST-based WS-outage safety net
