@@ -39,8 +39,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "simulation"))
 
-from core import Simulation, Agent, Grid, Position
-from algo.pibt import PIBT
+from core import Simulation, Agent, Grid, Position, StaticDispatcher
+from algo import PIBTCoordinator
 
 DEFAULT_BASE_URL = "http://localhost:8000"
 DEFAULT_CELL_MM = None      # cell size in mm; if None, derived from map_size / map_cells
@@ -144,8 +144,11 @@ def build_pibt(
     addresses = list(grid_state.keys())
     agents = [Agent(agent_id=i, position=grid_state[addr]) for i, addr in enumerate(addresses)]
     goals_by_agent = _assign_random_goals(agents, grid, rng)
-    pibt = PIBT(goals=goals_by_agent)
-    sim = Simulation(grid, coordinator=pibt)
+    # DispatchIntent (and StaticDispatcher) are agent_id-keyed, not Agent-keyed.
+    goals_by_id = {agent.agent_id: pos for agent, pos in goals_by_agent.items()}
+    pibt = PIBTCoordinator()
+    dispatcher = StaticDispatcher(goals=goals_by_id)
+    sim = Simulation(grid, coordinator=pibt, dispatcher=dispatcher)
     for agent in agents:
         sim.add_agent(agent)
     goals_by_address = {addresses[i]: goals_by_agent[agents[i]] for i in range(len(agents))}
