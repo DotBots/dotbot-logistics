@@ -20,7 +20,9 @@ Three levels, pure algorithm to real hardware:
 
 - **L0** — pure Python, no hardware: `sim_pibt.py`, `sim_many_pibt.py`, the whole `simulation/`
   package.
-- **L1** — drives the DotBot **simulator** through its REST controller API: `sim_dotbot_pibt.py`.
+- **L1** — drives the DotBot **simulator** through its REST controller API: `sim_dotbot_pibt.py`
+  (fixed-goal batch run), `sim_dotbot_mrta.py` (persistent, operator-driven via clicks in the
+  existing web UI).
 - **L2** — drives **real** DotBots over LH2/MQTT: `real_dotbot_pibt.py`,
   `real_dotbot_pibt_batch.py`.
 
@@ -81,7 +83,8 @@ in the same commit — an agent map that lies is worse than no map.)*
 ├── log/                         — experiment outputs (raw_logs/, *_per_run.csv, *_summary.csv)
 ├── sim_pibt.py                  — L0 interactive PIBT viewer
 ├── sim_many_pibt.py             — L0 headless benchmark sweep
-├── sim_dotbot_pibt.py           — L1: drives the DotBot simulator
+├── sim_dotbot_pibt.py           — L1: drives the DotBot simulator (fixed-goal batch run)
+├── sim_dotbot_mrta.py           — L1: persistent, click-to-target via the web UI (see below)
 ├── real_dotbot_pibt.py          — L2: drives real DotBots
 ├── real_dotbot_pibt_batch.py    — L2: batch harness (N bots x M runs)
 └── run_metrics.py               — CSV metrics helper for the L2 batch harness
@@ -111,6 +114,38 @@ three-part shape — this is the pattern to preserve when migrating or extending
   after each step, since real hardware drifts from the plan), records `RunMetrics`, writes CSVs
   via `run_metrics.py`.
 
+### `sim_dotbot_mrta.py` — a different pattern (2026-07-23)
+
+Not a fixed-goal batch run: it starts every bot **parked** (no goals) and runs **indefinitely**
+(Ctrl+C to stop), waiting for an operator to drive it. It reuses `GridStateManager`,
+`send_waypoints()`, `_send_all_parallel()` and `wait_until_all_arrived()` verbatim (same
+duplication convention as the other bridge scripts), but replaces `build_pibt()` +
+`StaticDispatcher` with `build_mrta()` wiring `mrta.FleetManager` + `mrta.QueueTaskSource` +
+`algo.EasiestAllocator` as the `Simulation`'s dispatcher, and drops the pipelining
+`run_pibt_live()` does (a manual click can land mid-travel and must be reflected in the very next
+`sim.step()`, so pre-computing ahead would either miss it or be thrown away — this script always
+does the plainer step → send → wait, like `real_dotbot_pibt.py`).
+
+**The click path has no PyDotBot-side changes.** The operator uses the existing, unmodified web
+UI exactly as it already works today: select a bot, click a map point, "Apply waypoints" — a
+normal `PUT .../waypoints`. `sim_dotbot_mrta.py` detects that PUT via a `WaypointWatcher`
+background thread listening on the controller's `ws://<base>/controller/ws/status` broadcast
+channel (**not** `/controller/ws/dotbots`, which is a separate, bidirectional command-relay
+channel that never receives broadcasts — confirmed by reading `dotbot/server.py` directly,
+verify again if this behaviour matters and PyDotBot has moved on since), converts the waypoint's
+target cell into an `mrta.Task` restricted to that one bot (`eligible=frozenset({agent_id})`),
+and lets PIBT navigate it there while avoiding every other bot being driven the same way. A
+periodic REST-based reconciliation pass (comparing `GET /controller/dotbots`' `waypoints` field
+against what the script itself last sent) recovers a click made while the WS link was down. A
+re-click on a bot already mid-route overrides the in-flight task rather than queuing behind it —
+matching the fact that the browser's own PUT already overwrites the bot's waypoint list
+unconditionally the instant it lands.
+
+**Cross-repo dependency**: the WS message shape this script parses
+(`{"cmd": 2, "data": {"address": ..., "lh2_waypoints": [...]}}`) is owned by
+`/home/dok/Inria/PyDotBot` (a separate repo, not versioned here) — if that project changes its
+notification schema, `WaypointWatcher._handle_raw()` is what needs updating.
+
 ### Grid ↔ mm mapping
 
 ```
@@ -127,11 +162,14 @@ Alternative: `--map-cells 8` → `cell_mm = 250`, 8×8 grid (use `simulator_init
 GET  /controller/dotbots                     → list of bots (filter: lh2_position present, status != 2)
 GET  /controller/map_size                    → { width, height } in mm
 PUT  /controller/dotbots/{addr}/0/waypoints  → { threshold, waypoints: [{x, y}] }
+WS   /controller/ws/status                   → broadcasts { cmd, data } on every state change
+                                                (sim_dotbot_mrta.py only, cmd 2 = UPDATE)
 ```
 
 This is the seam that changes as the DotBot environment is restructured — if the controller API
 shape changes, `GridStateManager` and `send_waypoints()` are what need updating, in each of the
-three scripts that duplicate them.
+four scripts that duplicate them (plus `WaypointWatcher._handle_raw()` in `sim_dotbot_mrta.py` for
+the WS shape specifically).
 
 ### Configuration
 
