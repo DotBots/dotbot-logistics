@@ -12,9 +12,10 @@ hardware) lives under [`docs/`](docs/index.md) and builds as a MkDocs site (`mkd
 |------|-------|-------------|
 | `sim_pibt.py` | 0 | Interactive pygame viewer — animates PIBT on a small grid (edit-in-file scenario). |
 | `sim_many_pibt.py` | 0 | Headless benchmark — PIBT sweep over grid resolution × N × seeds, writes a CSV. |
-| `simulation/` | 0 | Standalone PIBT engine (`core/`, `algo/pibt.py`) + renderers. |
+| `simulation/` | 0 | Standalone PIBT/MRTA engine (`core/`, `algo/`, `mrta/`) + renderers. |
 | `simulation/main.py` | 0 | Minimal non-PIBT template (random-walk coordinator). |
 | `sim_dotbot_pibt.py` | 1 | Drives the DotBot **simulator** through the controller API (parallel + pipelined). |
+| `sim_dotbot_mrta.py` | 1 | Persistent — click a bot then a cell in the existing web UI, PIBT drives it there while others carry on. |
 | `real_dotbot_pibt.py` | 2 | Drives **real** DotBots, one waypoint per bot per step, sync barrier between steps. |
 | `real_dotbot_pibt_batch.py` | 2 | Parametrised batch test (`--bots N --runs M`) writing L1 metrics. |
 | `log/` | — | Experiment outputs — `raw_logs/` and metrics CSVs. |
@@ -30,9 +31,10 @@ hardware) lives under [`docs/`](docs/index.md) and builds as a MkDocs site (`mkd
 pip install -r requirements.txt
 ```
 
-`requirements.txt` pulls `pydotbot[calibrate]`, `requests`, and `pygame` (the last one is
-only used by the Level 0 viewer). The bundled `simulation/` engine is added to `sys.path`
-automatically by the scripts — no separate install needed.
+`requirements.txt` pulls `pydotbot[calibrate]`, `requests`, `pygame` (only used by the Level 0
+viewer), `scipy` (only used by the still-stubbed `KDTreeGreedyAllocator`), and `websockets`
+(only used by `sim_dotbot_mrta.py`'s click-detection listener). The bundled `simulation/` engine
+is added to `sys.path` automatically by the scripts — no separate install needed.
 
 ---
 
@@ -109,6 +111,37 @@ python sim_dotbot_pibt.py --seed 42    # reproducible random goals
 | `--base URL` | `http://localhost:8000` | Controller URL |
 | `--seed N` | random | RNG seed for reproducible goals |
 
+#### `sim_dotbot_mrta.py` — persistent, click-to-target
+
+No fixed goals, no step limit: every bot starts parked and stays that way until an operator drives
+it, using the **existing, unmodified** DotBot web UI at `http://localhost:8000/PyDotBot/` — no
+frontend changes needed. Select a bot, click a point on the map, click "Apply waypoints" (the
+UI's own existing flow). The script detects that click over the controller's WebSocket status
+channel, snaps it to the nearest grid cell, and hands it to PIBT as a task restricted to that one
+bot — it then navigates there step by step, avoiding every other bot being driven the same way.
+Untouched bots simply stay put. Re-clicking a bot that's still mid-route redirects it immediately
+instead of queuing behind the old target. Runs until `Ctrl+C`.
+
+```bash
+python sim_dotbot_mrta.py              # persistent run — click bots in the browser to drive them
+python sim_dotbot_mrta.py --dry-run    # connect and build the grid, send/wait nothing (wiring check)
+python sim_dotbot_mrta.py --map-cells 8  # 8x8 grid (250 mm cells); default is 5x5 (400 mm)
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--dry-run` | — | Connect and build the grid without sending or waiting |
+| `--map-cells N` | `5` | Grid resolution N×N (5 → 400 mm cells, 8 → 250 mm on a 2000×2000 map) |
+| `--cell-mm N` | derived | Cell size in mm (overrides `--map-cells`; default: `map_size / --map-cells`) |
+| `--threshold N` | `100` | Arrival radius per cell in mm |
+| `--step-timeout S` | `4.0` | Max wait (s) per step |
+| `--settle S` | `0.3` | Pause (s) after arrival per step |
+| `--min-bots N` | `2` | Minimum localised bots required at startup |
+| `--base URL` | `http://localhost:8000` | Controller URL |
+| `--ws-url URL` | derived from `--base` | Controller WebSocket status URL |
+| `--idle-sleep S` | `0.2` | Pause (s) between idle ticks with nothing to do |
+| `--reconcile-interval S` | `2.0` | Period (s) of the REST-based safety net that recovers a click made while the WebSocket link was down |
+
 ### Level 2 — real hardware
 
 #### `real_dotbot_pibt.py`
@@ -177,6 +210,15 @@ dotbot run simulator \
 python sim_dotbot_pibt.py
 python sim_dotbot_pibt.py --dry-run
 ```
+
+### 2b. Or drive it manually via the web UI (MRTA mode)
+
+```bash
+python sim_dotbot_mrta.py
+```
+
+Then open `http://localhost:8000/PyDotBot/`, select a bot, click a point on the map, and click
+"Apply waypoints" — PIBT takes it from there. `Ctrl+C` to stop.
 
 ### 3. Run the real-hardware demo
 
