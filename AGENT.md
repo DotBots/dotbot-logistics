@@ -30,40 +30,37 @@ assignment. The design roadmap that preceded the implementation (`RoadmapMRTA.md
 removed now that the code is the source of truth; if you need the original rationale, it is in
 git history (`git log --all --full-history -- RoadmapMRTA.md`).
 
-## Current known inconsistencies — READ BEFORE TOUCHING L0/L1/L2 SCRIPTS
+## Bridge-scripts migration history (2026-07-23)
 
 `simulation/` was refactored: `core/` split into `entities/`/`environment/`/`engine/`,
 `Objective` removed in favour of `Zone`, `algo/pibt.py` replaced by
 `algo/coordination/pibt_coordinator.py`'s `PIBTCoordinator`, and goals/priorities are now
 injected per tick via a `DispatchIntent` instead of the old `PIBT(goals=..., initial_priorities=...)`
-constructor. `sim_pibt.py` and `sim_dotbot_pibt.py` have since been migrated (2026-07-23) onto
-`PIBTCoordinator` + `StaticDispatcher`, following the `simulation/demo_pibt.py` pattern — goals
-and priorities are now keyed by `agent_id` (int), not `Agent` objects. `sim_pibt.py`'s old
-`Objective` obstacle (a collectible, owner-able entity) was dropped rather than replaced: that
-entity type has no post-refactor equivalent (`Zone` is never collectible). **The remaining
-root-level scripts are still unmigrated:**
+constructor. All five root-level bridge scripts (`sim_pibt.py`, `sim_many_pibt.py`,
+`sim_dotbot_pibt.py`, `real_dotbot_pibt.py`, `real_dotbot_pibt_batch.py`) initially missed this
+and failed at import; all five have since been migrated onto `PIBTCoordinator` +
+`StaticDispatcher`, following the `simulation/demo_pibt.py` pattern — goals and priorities are
+now keyed by `agent_id` (int), not `Agent` objects. Two things worth knowing if you touch them
+again:
 
-| Script | Status | Fails with |
-|---|---|---|
-| `sim_pibt.py` | **fixed** (2026-07-23) | migrated to `PIBTCoordinator`/`StaticDispatcher` |
-| `sim_dotbot_pibt.py` | **fixed** (2026-07-23) | migrated to `PIBTCoordinator`/`StaticDispatcher` |
-| `sim_many_pibt.py` (root) | broken | `ModuleNotFoundError: No module named 'algo.pibt'` |
-| `real_dotbot_pibt.py` | broken | same `algo.pibt` error (shares the `sim_dotbot_pibt.py` pattern, same fix applies) |
-| `real_dotbot_pibt_batch.py` | broken | same `algo.pibt` error |
-| `simulation/demo_pibt.py`, `simulation/main.py` | **working** | migrated, exercise the current engine |
+- **`sim_pibt.py`'s old `Objective` obstacle** (a collectible, owner-able entity) was dropped
+  rather than replaced — that entity type has no post-refactor equivalent (`Zone` is never
+  collectible).
+- **`real_dotbot_pibt_batch.py`'s `resync_simulation()`** used to reach into
+  `sim.coordinator.priorities` (Agent-keyed) to un-stick an agent PIBT had demoted to `-inf`
+  after "reaching its goal", in case the LH2 resync showed it hadn't really arrived. That hack
+  was dropped, not migrated: `PIBTCoordinator` has no public `priorities` attribute, and doesn't
+  need the poke either — `plan()` re-checks `position == goal` at the start of every step and
+  restores the demoted base priority itself as soon as the state stops holding (the "`-inf`
+  demotion is reversible" invariant, `simulation/AGENT.md`).
 
-If you are asked to fix or extend one of the still-broken scripts, migrating its import
-(`algo.pibt.PIBT` → `algo.coordination.pibt_coordinator.PIBTCoordinator`, goals/priorities
-delivered via `DispatchIntent`/`StaticDispatcher` rather than the constructor, keyed by
-`agent_id` not `Agent`) is a prerequisite, not a side effect — treat it as its own commit. Do not
-assume a script works because it looks structurally complete; re-run it.
+**Two `sim_many_pibt.py` still exist and are not interchangeable**: the root one (L0 sweep over
+grid × N × seed, writes `l0_results.csv`) and `simulation/sim_many_pibt.py` (same idea, own
+scope, writes `sim_results.csv`). Both now target the current engine — check which directory
+you're in before running or editing either.
 
-**Two `sim_many_pibt.py` exist and are not interchangeable**: the root one (above, broken,
-writes `l0_results.csv`) and `simulation/sim_many_pibt.py` (current, targets the migrated engine,
-writes `sim_results.csv`). Check which directory you're in before running or editing either.
-
-*(This table is a snapshot, not a guarantee. If you fix one of these scripts, update this file in
-the same commit — an agent map that lies is worse than no map.)*
+*(If `simulation/`'s engine changes again in a way that breaks these scripts, update this section
+in the same commit — an agent map that lies is worse than no map.)*
 
 ## Layout
 
@@ -82,11 +79,11 @@ the same commit — an agent map that lies is worse than no map.)*
 ├── docs/                        — MkDocs site: level-0/1/2 guides, installation, contributing, inria/
 ├── simulation/                  — PIBT/MRTA engine, own CLAUDE.md/AGENT.md/CONVENTION.md
 ├── log/                         — experiment outputs (raw_logs/, *_per_run.csv, *_summary.csv)
-├── sim_pibt.py                  — L0 interactive PIBT viewer            [broken, see above]
-├── sim_many_pibt.py             — L0 headless benchmark sweep           [broken, see above]
-├── sim_dotbot_pibt.py           — L1: drives the DotBot simulator       [broken, see above]
-├── real_dotbot_pibt.py          — L2: drives real DotBots               [broken, see above]
-├── real_dotbot_pibt_batch.py    — L2: batch harness (N bots x M runs)   [broken, see above]
+├── sim_pibt.py                  — L0 interactive PIBT viewer
+├── sim_many_pibt.py             — L0 headless benchmark sweep
+├── sim_dotbot_pibt.py           — L1: drives the DotBot simulator
+├── real_dotbot_pibt.py          — L2: drives real DotBots
+├── real_dotbot_pibt_batch.py    — L2: batch harness (N bots x M runs)
 └── run_metrics.py               — CSV metrics helper for the L2 batch harness
 ```
 
