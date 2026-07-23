@@ -34,6 +34,7 @@ Folder and file names are in English.
 ├── sim_pibt.py                   — L0 interactive PIBT viewer
 ├── sim_many_pibt.py              — L0 headless benchmark sweep
 ├── sim_dotbot_pibt.py            — L1: drives the DotBot simulator via REST API
+├── sim_dotbot_mrta.py            — L1: persistent, click-to-target via the existing web UI
 ├── real_dotbot_pibt.py           — L2: drives real DotBots over LH2/MQTT
 ├── real_dotbot_pibt_batch.py     — L2: batch harness (N bots x M runs)
 └── run_metrics.py                — CSV metrics helper for the L2 batch harness
