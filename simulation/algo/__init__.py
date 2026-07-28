@@ -1,4 +1,9 @@
-from .pibt import PIBT
-from .random_walk import RandomWalkCoordinator
+"""MAPF algorithms — depend on core, and mrta for allocation."""
 
-__all__ = ["PIBT", "RandomWalkCoordinator"]
+from .coordination import PIBTCoordinator, RandomWalkCoordinator
+from .allocation import EasiestAllocator, RandomAllocator, KDTreeGreedyAllocator
+
+__all__ = [
+    "PIBTCoordinator", "RandomWalkCoordinator",
+    "EasiestAllocator", "RandomAllocator", "KDTreeGreedyAllocator",
+]
