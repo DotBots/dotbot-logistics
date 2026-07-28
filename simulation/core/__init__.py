@@ -1,12 +1,15 @@
-from .position import Position
-from .entity import WorldEntity
-from .agent import Agent
-from .objective import Objective
-from .grid import Grid
-from .simulation import Simulation
-from .coordinator import Coordinator
+"""Pure simulation engine — no rendering or algorithm dependencies."""
+
+from .entities import Position, WorldEntity, Agent, Zone
+from .environment import Grid
+from .engine import (
+    Coordinator, PlanResult, DispatchIntent,
+    Dispatcher, StaticDispatcher, Simulation,
+)
 
 __all__ = [
-    "Position", "WorldEntity", "Agent", "Objective",
-    "Grid", "Simulation", "Coordinator",
+    "Position", "WorldEntity", "Agent", "Zone",
+    "Grid", "Simulation",
+    "Coordinator", "PlanResult", "DispatchIntent",
+    "Dispatcher", "StaticDispatcher",
 ]
