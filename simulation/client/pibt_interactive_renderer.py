@@ -10,17 +10,18 @@ Pre-computes all steps then allows free navigation through history:
 The footer bar shows for each step the priority order,
 each agent's move, and any priority inheritances triggered.
 
+Each snapshot wraps the PlanResult returned by ``sim.step()`` — the
+renderer depends only on core, never on the algo package. Goals are
+read from ``sim.coordinator.goals`` (public coordinator attribute).
+
 Usage:
     from client import PIBTInteractiveRenderer
-    PIBTInteractiveRenderer(sim, pibt).run(steps=80, auto_ms=500)
+    PIBTInteractiveRenderer(sim).run(steps=80, auto_ms=500)
 """
 
 from dataclasses import dataclass, field
 
-from core.simulation import Simulation
-from core.agent import Agent
-from core.objective import Objective
-from algo.pibt import PIBT
+from core import Simulation, Agent, PlanResult
 
 MUTED      = ( 90,  90, 110)
 SEP        = (150, 150, 180)
@@ -34,59 +35,71 @@ FOOTER_ROW = 20   # height per agent row in footer
 
 @dataclass
 class StepSnapshot:
-    step:        int
-    positions:   dict = field(default_factory=dict)   # agent_id → Position
-    priorities:  dict = field(default_factory=dict)   # agent_id → float
-    order:       list = field(default_factory=list)   # [agent_id, ...] prio desc.
-    moves:       dict = field(default_factory=dict)   # agent_id → (Position, Position)
-    inheritance: list = field(default_factory=list)   # [(pusher_id, pushed_id), ...]
-    objects:     list = field(default_factory=list)   # [(Position, "objective"|"obstacle")]
-    goals:       dict = field(default_factory=dict)   # agent_id → Position
+    """Frozen view of one simulation step, built for later navigation.
+
+    Wraps the PlanResult of the step plus the display context that the
+    result does not carry (goals and static objects on the grid).
+    """
+
+    step:    int
+    result:  PlanResult                            # plan of this step (positions, diagnostics)
+    goals:   dict = field(default_factory=dict)    # agent_id → Position
+    objects: list = field(default_factory=list)    # [(Position, "obstacle")]
 
 
 class PIBTInteractiveRenderer:
     """Interactive PIBT renderer: pre-computes history, navigates with keyboard."""
 
-    def __init__(self, simulation: Simulation, pibt: PIBT) -> None:
-        self.sim  = simulation
-        self.pibt = pibt
+    def __init__(self, simulation: Simulation) -> None:
+        """Input: the simulation to display (its coordinator is expected
+        to expose a public ``goals`` dict[Agent, Position]).
+        Output: None.
+        """
+        self.sim = simulation
 
     # ── Public API ────────────────────────────────────────────────────────────
 
     def run(self, steps: int = 30, auto_ms: int = 600) -> None:
-        """Pre-computes `steps` steps then opens the interactive window."""
+        """Input: number of steps to pre-compute and auto-play delay (ms).
+        Output: None. Opens the interactive pygame window.
+        """
         history = self._build_history(steps)
         self._run_loop(history, auto_ms)
 
     def run_debug(self, steps: int = 30) -> None:
-        """Debug mode: prints each step to the terminal, no pygame window."""
+        """Input: number of steps to pre-compute.
+        Output: None. Prints each step to the terminal, no pygame window.
+        """
         history = self._build_history(steps)
         total   = len(history) - 1
         for snap in history:
             self._print_snapshot(snap, total)
 
     def _print_snapshot(self, snap: "StepSnapshot", total: int) -> None:
+        """Input: a snapshot and the total number of steps.
+        Output: None. Prints the snapshot to the terminal.
+        """
         label = "Initial" if snap.step == 0 else f"Step {snap.step} / {total}"
         print(f"\n{'═' * 50}")
         print(f"  {label}")
         print(f"{'═' * 50}")
 
         if snap.step == 0:
-            for aid, pos in sorted(snap.positions.items()):
+            for aid, pos in sorted(snap.result.positions.items()):
                 goal = snap.goals.get(aid)
                 goal_str = f"  goal: ({goal.x},{goal.y})" if goal else ""
                 print(f"  Agent {aid}  pos: ({pos.x},{pos.y}){goal_str}")
         else:
-            forced_by = {pushed: pusher for pusher, pushed in snap.inheritance}
-            forces    = {pusher: pushed for pusher, pushed in snap.inheritance}
-            order     = snap.order if snap.order else sorted(snap.positions)
+            forced_by = {pushed: pusher for pusher, pushed in snap.result.inheritance}
+            forces    = {pusher: pushed for pusher, pushed in snap.result.inheritance}
+            order     = snap.result.order if snap.result.order else sorted(snap.result.positions)
 
             for rank, aid in enumerate(order):
-                prio = snap.priorities.get(aid, 0)
+                prio = snap.result.priorities.get(aid, 0)
                 prio_str = "-inf" if prio == float("-inf") else f"{prio:+.0f}"
 
-                if aid in snap.moves:
-                    from_p, to_p = snap.moves[aid]
+                if aid in snap.result.moves:
+                    from_p, to_p = snap.result.moves[aid]
                     if prio == float("-inf"):
                         action = f"goal reached ({to_p.x},{to_p.y})"
                     elif from_p == to_p:
@@ -105,52 +118,67 @@ class PIBTInteractiveRenderer:
                 print(f"  #{rank+1:2}  Agent {aid}  prio: {prio_str:>5}  {action}{inherit}")
 
         if snap.objects:
-            obj_str = "  ".join(
-                f"{'◆' if k == 'objective' else '■'}({p.x},{p.y})"
-                for p, k in snap.objects
-            )
-            print(f"  objects: {obj_str}")
+            obj_str = "  ".join(f"■({p.x},{p.y})" for p, k in snap.objects)
+            print(f"  obstacles: {obj_str}")
 
     # ── History building ──────────────────────────────────────────────────────
 
     def _build_history(self, total_steps: int) -> list[StepSnapshot]:
-        goals_by_id = {a.agent_id: pos for a, pos in self.pibt.goals.items()}
+        """Input: number of steps to simulate.
+        Output: list of StepSnapshot (index 0 = initial state), built by
+        running the simulation and capturing each step's PlanResult and
+        goals. Goals now come from the tick's intent (via the coordinator),
+        so they are captured per frame after each step; the initial frame
+        is back-filled from the first step's goals.
+        """
         history = [StepSnapshot(
             step=0,
-            positions={a.agent_id: a.position for a in self.sim.agents},
+            result=PlanResult(
+                positions={a.agent_id: a.position for a in self.sim.agents},
+            ),
+            goals={},
             objects=self._snapshot_objects(),
-            goals=goals_by_id,
         )]
         for _ in range(total_steps):
-            self.sim.step()
+            result = self.sim.step()
+            goals_now = {
+                a.agent_id: pos
+                for a, pos in getattr(self.sim.coordinator, "goals", {}).items()
+            }
             history.append(StepSnapshot(
                 step=self.sim.current_step,
-                positions={a.agent_id: a.position for a in self.sim.agents},
-                priorities={a.agent_id: p for a, p in self.pibt.priorities.items()},
-                order=[a.agent_id for a in self.pibt._last_order],
-                moves={a.agent_id: (f, t) for a, (f, t) in self.pibt._last_moves.items()},
-                inheritance=[(p.agent_id, q.agent_id) for p, q in self.pibt._last_inheritance],
+                result=result,
+                goals=goals_now,
                 objects=self._snapshot_objects(),
-                goals=goals_by_id,
             ))
+        # Back-fill the initial frame's goals from the first step (correct
+        # for static goals; a reasonable preview for dynamic ones).
+        if len(history) > 1 and not history[0].goals:
+            history[0].goals = history[1].goals
         return history
 
     def _snapshot_objects(self) -> list[tuple]:
+        """Input: none.
+        Output: list of (Position, kind) for active static entities
+        currently on the grid.
+        """
         result = []
         for e in self.sim.grid.get_all():
             if isinstance(e, Agent) or not e.active:
                 continue
-            kind = "objective" if isinstance(e, Objective) else "obstacle"
-            result.append((e.position, kind))
+            result.append((e.position, "obstacle"))
         return result
 
     # ── Interactive pygame loop ───────────────────────────────────────────────
 
     def _run_loop(self, history: list[StepSnapshot], auto_ms: int) -> None:
+        """Input: pre-computed history and auto-play delay (ms).
+        Output: None. Runs the interactive pygame event loop.
+        """
         import pygame
-        from client.renderer import AGENT_COLORS, OBJ_COLORS, BG_A, BG_B, GRID_C, BLACK, WHITE, DARK
+        from client.palette import AGENT_COLORS, OBJ_COLORS, BG_A, BG_B, GRID_C, BLACK, WHITE, DARK
 
-        n_agents = len(history[0].positions)
+        n_agents = len(history[0].result.positions)
         total    = len(history) - 1
         h = MARGIN + self.sim.grid.height * CELL + FOOTER_HDR + n_agents * FOOTER_ROW + 10
 
@@ -173,6 +201,7 @@ class PIBTInteractiveRenderer:
         last_advance = pygame.time.get_ticks()
 
         def render() -> None:
+            """Input: none (closure). Output: None. Redraws the frame."""
             screen.fill(WHITE)
             snap = history[idx]
             self._draw_header(screen, snap, total, playing, font_hdr, w)
@@ -220,7 +249,8 @@ class PIBTInteractiveRenderer:
 
     def _required_text_width(self, history: list[StepSnapshot], total: int,
                              font_hdr, font_sm) -> int:
-        """Pixel width of the longest text (header + footer lines).
+        """Input: pre-computed history, total steps and the two fonts.
+        Output: pixel width of the longest text (header + footer lines).
 
         Reproduces the strings built in `_draw_header` / `_draw_footer`
         to measure exactly what will be drawn, including indents.
@@ -237,14 +267,14 @@ class PIBTInteractiveRenderer:
         for snap in history:
             if snap.step == 0:
                 continue
-            forced_by = {pushed: pusher for pusher, pushed in snap.inheritance}
-            forces    = {pusher: pushed for pusher, pushed in snap.inheritance}
-            order     = snap.order if snap.order else sorted(snap.positions)
+            forced_by = {pushed: pusher for pusher, pushed in snap.result.inheritance}
+            forces    = {pusher: pushed for pusher, pushed in snap.result.inheritance}
+            order     = snap.result.order if snap.result.order else sorted(snap.result.positions)
             for rank, aid in enumerate(order):
-                prio = snap.priorities.get(aid, 0)
+                prio = snap.result.priorities.get(aid, 0)
                 prio_str = "−∞" if prio == float("-inf") else f"{prio:+.0f}"
-                if aid in snap.moves:
-                    from_p, to_p = snap.moves[aid]
+                if aid in snap.result.moves:
+                    from_p, to_p = snap.result.moves[aid]
                     if prio == float("-inf"):
                         action = f"goal reached  ({to_p.x},{to_p.y})"
                     elif from_p == to_p:
@@ -261,14 +291,17 @@ class PIBTInteractiveRenderer:
                 text = f"#{rank+1}  Agent {aid}  |  prio: {prio_str}  |  {action}{inherit_note}"
                 widest = max(widest, 30 + font_sm.size(text)[0])
 
-        return widest + 16   # marge droite
+        return widest + 16   # right margin
 
     # ── Drawing ───────────────────────────────────────────────────────────────
 
     def _draw_header(self, screen, snap: StepSnapshot, total: int,
                      playing: bool, font_hdr, w: int) -> None:
+        """Input: surface, snapshot, total steps, play state, font, width.
+        Output: None. Draws the header bar.
+        """
         import pygame
-        from client.renderer import DARK
+        from client.palette import DARK
         pygame.draw.rect(screen, HDR_BG, (0, 0, w, MARGIN))
         label  = "Initial" if snap.step == 0 else f"Step {snap.step} / {total}"
         status = "▶ play" if playing else "⏸ pause"
@@ -279,8 +312,11 @@ class PIBTInteractiveRenderer:
         screen.blit(lbl, (10, (MARGIN - lbl.get_height()) // 2))
 
     def _draw_grid(self, screen, snap: StepSnapshot, font, font_sm) -> None:
+        """Input: surface, snapshot and fonts.
+        Output: None. Draws the grid, goals, obstacles and agents.
+        """
         import pygame
-        from client.renderer import AGENT_COLORS, OBJ_COLORS, BG_A, BG_B, GRID_C, BLACK, WHITE, DARK
+        from client.palette import AGENT_COLORS, OBJ_COLORS, BG_A, BG_B, GRID_C, BLACK, WHITE, DARK
         n_cols, n_rows = self.sim.grid.width, self.sim.grid.height
 
         for x in range(n_cols):
@@ -304,19 +340,12 @@ class PIBTInteractiveRenderer:
             oy = MARGIN + pos.y * CELL + CELL // 2
             color = OBJ_COLORS.get(kind, (128, 128, 128))
             r = CELL // 2 - 10
-            if kind == "objective":
-                pts = [(ox, oy - r), (ox + r, oy), (ox, oy + r), (ox - r, oy)]
-                pygame.draw.polygon(screen, color, pts)
-                pygame.draw.polygon(screen, DARK, pts, 2)
-            else:
-                pygame.draw.rect(screen, color, (ox - r, oy - r, r * 2, r * 2))
-                pygame.draw.rect(screen, DARK,  (ox - r, oy - r, r * 2, r * 2), 2)
-            screen.blit(
-                font_sm.render("O" if kind == "objective" else "X", True, DARK),
-                font_sm.render("O", True, DARK).get_rect(center=(ox, oy)),
-            )
+            pygame.draw.rect(screen, color, (ox - r, oy - r, r * 2, r * 2))
+            pygame.draw.rect(screen, DARK,  (ox - r, oy - r, r * 2, r * 2), 2)
+            lbl = font_sm.render("X", True, DARK)
+            screen.blit(lbl, lbl.get_rect(center=(ox, oy)))
 
-        for aid, pos in snap.positions.items():
+        for aid, pos in snap.result.positions.items():
             cx = pos.x * CELL + CELL // 2
             cy = MARGIN + pos.y * CELL + CELL // 2
             color = AGENT_COLORS[aid % len(AGENT_COLORS)]
@@ -325,7 +354,7 @@ class PIBTInteractiveRenderer:
             pygame.draw.circle(screen, BLACK, (cx, cy), r, 1)
             screen.blit(font.render(str(aid), True, WHITE),
                         font.render(str(aid), True, WHITE).get_rect(center=(cx, cy)))
-            prio = snap.priorities.get(aid)
+            prio = snap.result.priorities.get(aid)
             if prio is not None:
                 pstr = "−∞" if prio == float("-inf") else f"{prio:.0f}"
                 screen.blit(font_sm.render(pstr, True, DARK),
@@ -333,8 +362,11 @@ class PIBTInteractiveRenderer:
 
     def _draw_footer(self, screen, snap: StepSnapshot, font_sm, font_hdr,
                      w: int, footer_top: int) -> None:
+        """Input: surface, snapshot, fonts, width and footer top y.
+        Output: None. Draws the per-agent priority/move/inheritance rows.
+        """
         import pygame
-        from client.renderer import AGENT_COLORS, DARK
+        from client.palette import AGENT_COLORS, DARK
         pygame.draw.line(screen, SEP, (0, footer_top), (w, footer_top), 1)
 
         if snap.step == 0:
@@ -349,9 +381,9 @@ class PIBTInteractiveRenderer:
             (12, footer_top + 4),
         )
 
-        forced_by = {pushed: pusher for pusher, pushed in snap.inheritance}
-        forces    = {pusher: pushed for pusher, pushed in snap.inheritance}
-        order     = snap.order if snap.order else sorted(snap.positions)
+        forced_by = {pushed: pusher for pusher, pushed in snap.result.inheritance}
+        forces    = {pusher: pushed for pusher, pushed in snap.result.inheritance}
+        order     = snap.result.order if snap.result.order else sorted(snap.result.positions)
 
         for rank, aid in enumerate(order):
             row_y = footer_top + FOOTER_HDR + rank * FOOTER_ROW + 2
@@ -360,11 +392,11 @@ class PIBTInteractiveRenderer:
             pygame.draw.circle(screen, color, (14, badge_cy), 8)
             pygame.draw.circle(screen, DARK,  (14, badge_cy), 8, 1)
 
-            prio = snap.priorities.get(aid, 0)
+            prio = snap.result.priorities.get(aid, 0)
             prio_str = "−∞" if prio == float("-inf") else f"{prio:+.0f}"
 
-            if aid in snap.moves:
-                from_p, to_p = snap.moves[aid]
+            if aid in snap.result.moves:
+                from_p, to_p = snap.result.moves[aid]
                 if prio == float("-inf"):
                     action = f"goal reached  ({to_p.x},{to_p.y})"
                 elif from_p == to_p:
