@@ -1,0 +1,131 @@
+@startuml component_diagram
+
+' =====================================================================
+'  COMPONENT VIEW — the 30-second read of the architecture.
+'
+'  Derived from _model.iuml, which stays the reference: this diagram
+'  adds nothing, it only drops everything that is not a package
+'  boundary or a seam between two packages.
+'
+'  What it is FOR: showing that the dependency graph is a DAG, and that
+'  the four abstractions (Coordinator, Dispatcher, SimulationDriver,
+'  StepSnapshot) are what keep it one. Every arrow points DOWN, towards
+'  something more abstract or more foundational — that is the whole
+'  design in one picture.
+'
+'  What it deliberately does NOT show: classes, methods, multiplicities,
+'  nor report/ — those live in the class diagram and in the report
+'  diagram; repeating them here would make this a second, competing
+'  rendering of the same thing.
+'
+'  LAYOUT: every edge carries an explicit direction and the components
+'  are declared top-down in reading order. Without that, dot lays the
+'  graph out by edge cost alone and the picture ends up contradicting
+'  the legend that tells you to read it downward.
+' =====================================================================
+
+title Component diagram — packages, and the seams between them
+
+skinparam componentStyle uml2
+skinparam ArrowColor #333333
+skinparam ComponentBorderColor #4A90D9
+skinparam InterfaceBorderColor #C9722A
+skinparam InterfaceBackgroundColor #FFF5EA
+skinparam NoteBackgroundColor #FFFDE7
+skinparam NoteBorderColor #C9B458
+
+' ── Layer 1 — presentation, and the one observer ──────────────────
+component "**client · frontends**\npygame · headless" as frontends #FFF5EA
+
+' report/ is drawn small and grey on purpose: its internals belong to
+' report_diagram.puml, not here. It appears at all because it is the
+' SECOND implementer of SimulationDriver — and an interface with a
+' single visible client always reads as gratuitous indirection.
+component "**report**" as report #F0F0F0
+
+' ── Layer 2 — the outward-facing seam ─────────────────────────────
+interface "SimulationDriver" as IDriver
+interface "StepSnapshot" as ISnap
+
+' ── Layer 3 — the composition root ────────────────────────────────
+component "**client · control**\nscripting API\ncomposition root" as control #FFF5EA
+
+' ── Layer 4 — the interchangeable parts ───────────────────────────
+component "**algo**\nhow they get there" as algo #F0FFF0
+component "**mrta**\nwho does what" as mrta #FFF0F5
+component "**client · view**\nfrozen frames" as view #FFF5EA
+
+' ── Layer 5 — the engine seams, declared by core ──────────────────
+interface "Coordinator" as ICoord
+interface "Dispatcher" as IDisp
+
+' ── Layer 6 — the foundation ──────────────────────────────────────
+component "**core**\nworld · grid · tick" as core #EAF4FF
+
+' =====================================================================
+'  Relations. Solid = uses the types directly. Dashed = plugs into an
+'  abstraction it does not own.
+' =====================================================================
+
+' Presentation drives the engine through the interface only.
+frontends ..down.> IDriver : drives
+frontends ..down.> ISnap   : reads
+
+' The same interface, implemented rather than consumed: RunCollector
+' wraps a driver and passes for one. This is what pays for the
+' abstraction — a decorator must present the face of what it wraps.
+' It reads the same frames a display does: measuring the run needs no
+' more access than drawing it, which is why no arrow from report reaches
+' past these two interfaces.
+report ..down.> IDriver : "implements\n(decorates)"
+report ..down.> ISnap   : measures
+
+' control declares that seam and implements it.
+IDriver -down- control
+ISnap   -down- control
+
+' The composition root is the only component naming a concrete class.
+control -down-> algo : "picks the\ncoordinator"
+control -down-> mrta : wires the fleet
+control -down-> view : builds snapshots
+
+' The two implementations plug into the seams core declares.
+algo ..down.> ICoord : implements
+mrta ..down.> IDisp  : implements
+
+' Plain dependencies, no inversion: these simply use the types below.
+' Labels are VERBS, never type names. An arrow here says who depends on
+' whom; a bare "TaskState" sitting on the line reads as cargo instead,
+' and the reader infers the supplier is at the tail — the exact
+' opposite of what the arrow means.
+algo -right-> mrta : "uses Allocator, Task"
+view -left-> mrta  : uses TaskState
+algo -down-> core  : uses
+mrta -down-> core  : uses
+view -down-> core  : uses Position
+
+' core owns the two engine seams: it declares them and calls them,
+' without ever knowing who implements them.
+ICoord -down- core
+IDisp  -down- core
+
+' The long edge on the side is real: build() assembles the Simulation
+' itself. It is drawn because "the composition root touches core" is
+' exactly the point of a composition root.
+control -down-> core : builds Simulation
+
+' No notes: this diagram is the 30-second read, and the rationale it
+' would carry is already in the class diagram and in AGENT.md.
+
+legend bottom left
+  **How to read it**
+  Every arrow points downward: the graph is a DAG, and **core** — at
+  the bottom — depends on nothing.
+    solid   A uses B's types directly
+    dashed  A plugs into an abstraction it does not own
+  The interfaces are where the graph would otherwise cycle. Without
+  them core would have to import algo, and the display would have to
+  import the engine.
+end legend
+
+@enduml

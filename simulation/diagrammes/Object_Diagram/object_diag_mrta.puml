@@ -1,0 +1,178 @@
+@startuml object_diagram_mrta_tick
+
+title Diagramme d'objets — un tick de PIBT avec allocation dynamique (--mode mrta)
+
+skinparam objectBorderColor #4A90D9
+skinparam objectBackgroundColor #EAF4FF
+skinparam ArrowColor #333333
+skinparam NoteBackgroundColor #FFFDE7
+skinparam NoteBorderColor #C9B458
+
+' =====================================================================
+'  Même tick que object_diag_static.puml, à un objet près : le
+'  StaticDispatcher figé est remplacé par un FleetManager, qui décide
+'  des buts à chaque tick. Tout ce qui est en rose est ce que cela
+'  ajoute ; le moteur et PIBT, eux, sont inchangés.
+' =====================================================================
+
+object "sim: Simulation" as sim {
+  current_step = 1
+}
+
+object "grid: Grid" as grid {
+  width = 15
+  height = 15
+}
+
+object "intent: DispatchIntent" as intent {
+  goals = {1: (5, 5)}
+  priorities = {1: 5.0}
+}
+
+object "coord: PIBTCoordinator" as coord {
+  goals = {a1: (5, 5)}
+}
+
+object "reservations: ReservationTable" as res_table {
+}
+
+object "priorities: PriorityManager" as prio {
+  _dynamic = {a1: 4.0, a2: -1.0}
+}
+
+object "a1: Agent" as a1 {
+  agent_id = 1
+  steps_taken = 1
+}
+
+object "a2: Agent" as a2 {
+  agent_id = 2
+  steps_taken = 0
+}
+
+object "pos_a1: Position" as pos_a1 {
+  x = 3
+  y = 5
+}
+
+object "pos_a2: Position" as pos_a2 {
+  x = 8
+  y = 2
+}
+
+object "result: PlanResult" as result {
+  positions = {1: (3, 5), 2: (8, 2)}
+  moves = {1: ((2,5), (3,5)), 2: ((8,2), (8,2))}
+  order = [1, 2]
+}
+
+' ── Ce que l'allocation dynamique ajoute ──────────────────────────
+object "fleet: FleetManager" as fleet #FFF0F5 {
+  patience = 12
+  max_attempts = 3
+  completed_count = 0
+}
+
+object "source: QueueTaskSource" as source #FFF0F5 {
+  _queue = []
+}
+
+object "allocator: EasiestAllocator" as alloc #FFF0F5 {
+}
+
+object "t1: Task" as t1 #FFF0F5 {
+  task_id = 1
+  state = TaskState.ASSIGNED
+  priority = 5.0
+  created_step = 0
+  attempts = 1
+  best_distance = 4
+}
+
+object "target_t1: Position" as target_t1 #FFF0F5 {
+  x = 5
+  y = 5
+}
+
+' ===================================
+' Liens de composition / agrégation
+' ===================================
+
+' Losanges : même convention que le diagramme de classe — plein pour une
+' valeur immuable ou un objet mutable à propriétaire unique, creux pour un
+' objet mutable dont l'instance est partagée.
+
+' Creux : la grille est partagée — la simulation la pilote, le
+' FleetManager la lit pour valider les cibles à l'intake.
+sim o-- grid    : grid
+sim *-- a1      : agents[0]
+sim *-- a2      : agents[1]
+sim o-- coord   : coordinator
+sim o-- fleet   : dispatcher
+sim *-- intent  : last_intent
+
+coord *-- res_table : _reservations
+coord *-- prio      : _priorities
+
+a1 *-- pos_a1 : position
+a2 *-- pos_a2 : position
+
+fleet o-- source : source
+fleet o-- alloc  : allocator
+fleet *-- t1     : tasks[0]
+
+t1 *-- target_t1 : target
+' Creux : la tâche pointe l'agent, elle ne le possède pas — c'est la
+' simulation qui détient les agents.
+t1 o-- a1 : assignee
+
+fleet ..> intent  : "dispatch() produit"
+sim ..> result    : "step() retourne"
+
+' ── Contrainte de mise en page ────────────────────────────────────
+' Sans cette arête, dot pousse ``intent`` à l'extrême gauche (il est
+' tiré à la fois par sim et par fleet) et les deux liens traversent
+' toute la page. Épinglé sous le FleetManager, il reste à côté des
+' deux objets qui le désignent.
+fleet -[hidden]down- intent
+
+' ===================================
+' Notes explicatives
+' ===================================
+
+note right of fleet
+  **La seule différence avec le tick statique**
+  Là où StaticDispatcher rendait une intention gelée, le
+  FleetManager en recalcule une à chaque tick :
+    _complete -> _watchdog -> _prune -> _intake -> _allocate
+  Il est le seul à voir une tâche *à travers* les ticks —
+  d'où la mémoire (tasks, compteurs) qu'il porte.
+end note
+
+note bottom of t1
+  **Une tâche vit PENDING -> ASSIGNED -> DONE**
+  ``best_distance`` et ``attempts`` servent le watchdog :
+  un assigné qui ne se rapproche plus pendant ``patience``
+  ticks est libéré, et après ``max_attempts`` porteurs la
+  tâche finit FAILED — sinon une cible inatteignable
+  retiendrait un robot pour toujours.
+end note
+
+note right of intent
+  **Le contrat est identique dans les deux modes**
+  Même type, même rôle : PIBT ne sait pas si ces buts
+  viennent d'une allocation ou d'une constante. a2 n'a
+  aucune tâche, donc aucun but — il reste sur place, et sa
+  priorité continue de décroître (anti-famine) jusqu'à ce
+  qu'une tâche lui soit allouée.
+end note
+
+note bottom of source
+  **La file est vide et c'est normal**
+  ``poll()`` la vide à chaque intake : les tâches migrent
+  dans ``fleet.tasks``, qui devient le registre unique.
+  C'est aussi le FleetManager qui estampille ``task_id``,
+  pour que deux sources ne puissent pas entrer en collision.
+end note
+
+@enduml
