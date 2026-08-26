@@ -1,6 +1,6 @@
 @startuml sim_dotbot_mrta_ws_target_class_diagram
 
-title sim_dotbot_mrta.py — target design: import MAPF_Simulation, own task allocation locally
+title sim_dotbot_mrta.py — target design: import MAPF_Simulation, incl. its Lifelong orchestrator
 
 skinparam classAttributeIconSize 0
 skinparam classFontSize 13
@@ -21,12 +21,17 @@ note as N0
      part of this diagram. Its own algo/, mrta/, client/, report/ were
      removed upstream (deliberate refactor!s, see its TODO.md) -- only
      core/ and pibt/ remain, and pibt/PIBTPlanner is a different
-     PathPlanner, not the old PIBTCoordinator. There is no upstream
-     task-allocation layer left to import: FleetManager, QueueTaskSource,
-     Task and the allocator all move from "borrowed" to "owned by
-     mrta_mode". Proposed connection: FleetManager becomes a concrete
-     MissionOrchestrator directly (core declares it, abstract, unimplemented)
-     -- see the FleetManager note below for the minimal-diff version.
+     PathPlanner, not the old PIBTCoordinator.
+
+     FleetManager, Task, QueueTaskSource, TaskSource, Allocator and
+     EasiestAllocator do NOT exist any more, upstream or otherwise --
+     an earlier version of this diagram proposed porting FleetManager
+     into mrta_mode as a local MissionOrchestrator; that is wrong and
+     is removed below. The package that actually replaces the whole
+     allocation layer is pibt/'s own second MissionOrchestrator,
+     LifelongGoalOrchestrator (pibt/lifelong_orchestrator.py) -- imported
+     wholesale, not reimplemented. See its note below for what that
+     substitution costs.
 end note
 
 package "mrta_mode (WS-driven position, REST as fallback only -- implemented)" #E8F5E9 {
@@ -117,20 +122,27 @@ package "mrta_mode (WS-driven position, REST as fallback only -- implemented)" #
 
     class MRTASession <<the "activatable mode" object>> {
         + engine : WorldEngine
-        + fleet : FleetManager
-        + queue_source : QueueTaskSource
+        + orchestrator : LifelongGoalOrchestrator
         + agents : list[Agent]
         --
         + start() : void
         + stop() : void
         + handle_click(address, waypoints_mm, source) : void
         + tick(step) : void
-        - _cancel_agent_tasks(agent_id) : void
     }
     note bottom of MRTASession
       tick() now calls LivePositionStore.wait_until_all_arrived()
       instead of WaypointCommandClient.wait_until_all_arrived() --
       same call site, event-driven instead of polling.
+
+      handle_click()'s body is exactly the open question in
+      LifelongGoalOrchestrator's note: push into goal_pool, or call a
+      new set_goal(agent_id, position) -- not decided, so left
+      unspecified here rather than drawn as settled.
+      _cancel_agent_tasks() (FleetManager-era) has no equivalent yet
+      either: cancelling one agent's in-flight goal under (b) is just
+      another set_goal() call; under (a) there is nothing to cancel,
+      a pool entry has no owner to revoke it from.
     end note
 
     class MRTACli <<kept, thinned>> {
@@ -139,7 +151,7 @@ package "mrta_mode (WS-driven position, REST as fallback only -- implemented)" #
     }
 }
 
-package "MAPF_Simulation (external repo, imported -- core + pibt only)" #EAF4FF {
+package "MAPF_Simulation (external repo, imported -- core + pibt, incl. Lifelong mode)" #EAF4FF {
     class WorldEngine
     class Grid2D
     class Agent
@@ -149,7 +161,9 @@ package "MAPF_Simulation (external repo, imported -- core + pibt only)" #EAF4FF 
     class PathPlanner <<interface>>
     class MissionOrchestrator <<interface>>
     class PIBTPlanner
+    class LifelongGoalOrchestrator
     PathPlanner <|.. PIBTPlanner
+    MissionOrchestrator <|.. LifelongGoalOrchestrator
     WorldEngine *-- PathPlanner
     WorldEngine o-- MissionOrchestrator
     WorldEngine *-- Agent
@@ -160,44 +174,41 @@ note bottom of PathPlanner
   from ~/3A/projets/MAPF_Simulation (git@github.com:RasdaCorentin/
   MAPF_Simulation). No FleetManager, QueueTaskSource, Task, Allocator
   or PIBTCoordinator survive on the other side of this import -- see N0.
-  MissionOrchestrator does, though: it is core's *abstract* replacement
-  for the old Dispatcher seam -- "no concrete implementation in the
-  repository right now" (its own docstring) -- which is exactly the gap
-  FleetManager fills below. No adapter class needed: same seam, one
-  field reshaped.
 end note
+note bottom of LifelongGoalOrchestrator
+  **The actual replacement for the allocation layer.** assign_missions()
+  draws the next entry from a shared, rotating goal_pool the instant an
+  agent is standing on its current goal (FCFS, _next_goal() pops front,
+  pushes back at end) -- imported as-is, nothing to reimplement.
 
-package "mrta_mode (local -- task allocation, no longer covered upstream)" #FFF0F5 {
-    class FleetManager <<now implements MissionOrchestrator directly>>
-    class QueueTaskSource
-    class Task
-    MissionOrchestrator <|.. FleetManager
-    FleetManager o-- QueueTaskSource
-    FleetManager *-- Task
-}
-note bottom of FleetManager
-  **Proposed connection, minimal-diff:** FleetManager already runs the
-  right cycle (complete -> watchdog -> prune -> intake -> allocate ->
-  intent) and already returns exactly this shape one field removed --
-  old: DispatchIntent(goals: dict[agent_id, Position], priorities).
-  new: AssignmentManifest(goals: list[Objective], priorities) -- same
-  fields, goals keyed by dict vs bound via Objective.attach_to(agent).
+  Two deliberate scope cuts (its own docstring: "no eligibility classes,
+  no pluggable allocation strategy, no stall watchdog") collide with
+  what mrta_mode's click-to-target currently means, and need resolving
+  before handle_click() can wire into this class:
 
-  Only three changes, no new class:
-  1. `class FleetManager(Dispatcher)` -> `class FleetManager(MissionOrchestrator)`,
-     `dispatch()` -> `assign_missions()` (rename, same signature shape).
-  2. `_build_intent()`'s body: for each ASSIGNED task, build
-     `Objective(entity_id=task.task_id, position=task.target)
-     .attach_to(task.assignee)` instead of `goals[aid] = task.target` --
-     return `AssignmentManifest(goals=objectives, priorities=...)`.
-  3. Position -> Coordinates2D, Grid -> Grid2D (+ its renamed methods:
-     is_valid->is_within_bounds, remove->unindex, get_agent_at->agent_at,
-     get_entities_at->entities_at, get_all->all_of_kind) -- mechanical,
-     both are structurally identical, confirmed by reading both sources.
+  1. No eligibility -- a click currently means "this ONE bot, this
+     cell" (eligible=frozenset({agent_id})). LifelongGoalOrchestrator
+     has no notion of "for this agent only": any agent standing on its
+     goal takes whatever is next in the pool. Fixing this needs either
+     (a) push the clicked cell into goal_pool and accept the semantic
+     change -- a click becomes "someone should go here", not "this bot
+     goes here" -- or (b) a small new public method upstream,
+     set_goal(agent_id, position), writing straight into _current_goal
+     and bypassing the pool for that one agent -- keeps today's
+     per-bot semantics, costs one method on a class this session's user
+     also maintains.
+  2. No idle/parked state -- assign_missions() ALWAYS redraws from the
+     pool once `position == goal`, there is no "goalless, waiting for
+     an operator" state. MRTA's current invariant ("every bot starts
+     parked, does nothing until clicked", AGENT.md) has no equivalent
+     here. (b) above also closes this: an agent with nothing set via
+     set_goal() needs a default of "stay at current position", which
+     means bypassing _next_goal() for it entirely rather than seeding
+     goal_pool with a dummy per-agent entry.
 
-  Task, QueueTaskSource, TaskSource, Allocator, EasiestAllocator need
-  NO interface change at all: none of them touch DispatchIntent/
-  AssignmentManifest directly, only FleetManager (the seam) does.
+  Neither cut is a bug -- both are the deliberate trade-off documented
+  in pibt/AGENT.md for the FCFS lifelong regime. This is the open
+  design decision the reconnection now forces, not yet made.
 end note
 
 MRTASession *-- GridStateManager
@@ -206,8 +217,7 @@ MRTASession *-- LivePositionStore
 MRTASession *-- ManualClickTranslator
 MRTASession *-- WaypointCommandClient
 MRTASession *-- WorldEngine
-MRTASession *-- FleetManager
-MRTASession *-- QueueTaskSource
+MRTASession *-- LifelongGoalOrchestrator
 MRTASession o-- Agent
 
 ControllerStatusListener ..> ManualClickTranslator : click events\n(data.lh2_waypoints)
