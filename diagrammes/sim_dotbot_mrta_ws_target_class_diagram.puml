@@ -1,6 +1,6 @@
 @startuml sim_dotbot_mrta_ws_target_class_diagram
 
-title sim_dotbot_mrta.py — target design: drive arrival from the WS position stream
+title sim_dotbot_mrta.py — target design: import MAPF_Simulation, own task allocation locally
 
 skinparam classAttributeIconSize 0
 skinparam classFontSize 13
@@ -12,7 +12,22 @@ skinparam ClassHeaderFontColor #FFFFFF
 skinparam PackageBorderColor #888888
 skinparam PackageBackgroundColor #F8F8F8
 
-package "mrta_mode (target — WS-driven position, REST as fallback only)" #E8F5E9 {
+note as N0
+  Two independent targets on one diagram, reached in this order:
+  1) WS-driven arrival (mrta_mode package) -- *implemented*, see the
+     commit that extracted mrta_mode/ and AGENT.md's mrta_mode section.
+  2) Retire the vendored simulation/ copy in favour of importing
+     ~/3A/projets/MAPF_Simulation directly -- *not started*, the new
+     part of this diagram. Its own algo/, mrta/, client/, report/ were
+     removed upstream (deliberate refactor!s, see its TODO.md) -- only
+     core/ and pibt/ remain, and pibt/PIBTPlanner is a different
+     PathPlanner, not the old PIBTCoordinator. There is no upstream
+     task-allocation layer left to import: FleetManager, QueueTaskSource,
+     Task and the allocator all move from "borrowed" to "owned by
+     mrta_mode".
+end note
+
+package "mrta_mode (WS-driven position, REST as fallback only -- implemented)" #E8F5E9 {
 
     class GridStateManager <<REST client — bootstrap + fallback only>> {
         + base_url : str
@@ -99,9 +114,10 @@ package "mrta_mode (target — WS-driven position, REST as fallback only)" #E8F5
     end note
 
     class MRTASession <<the "activatable mode" object>> {
-        + sim : Simulation
+        + engine : WorldEngine
         + fleet : FleetManager
         + queue_source : QueueTaskSource
+        + adapter : TaskManifestAdapter
         + agents : list[Agent]
         --
         + start() : void
@@ -122,25 +138,55 @@ package "mrta_mode (target — WS-driven position, REST as fallback only)" #E8F5
     }
 }
 
-package "simulation (existing engine, unchanged)" #EAF4FF {
-    class Simulation
+package "MAPF_Simulation (external repo, imported -- core + pibt only)" #EAF4FF {
+    class WorldEngine
+    class Grid2D
     class Agent
-    class Position
+    class Objective
+    class AssignmentManifest
+    class StepOutcome
+    class PathPlanner <<interface>>
+    class PIBTPlanner
+    PathPlanner <|.. PIBTPlanner
+    WorldEngine *-- PathPlanner
+    WorldEngine *-- Agent
+}
+note bottom of PathPlanner
+  Replaces the vendored simulation/ copy this diagram used to show as
+  "unchanged": that copy is retired, this package is imported instead
+  from ~/3A/projets/MAPF_Simulation (git@github.com:RasdaCorentin/
+  MAPF_Simulation). No FleetManager, QueueTaskSource, Task, Allocator
+  or PIBTCoordinator survive on the other side of this import -- see N0.
+end note
+
+package "mrta_mode (local -- task allocation, no longer covered upstream)" #FFF0F5 {
     class FleetManager
     class QueueTaskSource
     class Task
-    class PIBTCoordinator
-    class EasiestAllocator
+    class TaskManifestAdapter <<new -- design open>>
+    FleetManager o-- QueueTaskSource
+    FleetManager *-- Task
+    TaskManifestAdapter ..> FleetManager
+    TaskManifestAdapter ..> AssignmentManifest
 }
+note bottom of TaskManifestAdapter
+  Replaces EasiestAllocator + the DispatchIntent wiring, neither of
+  which exists upstream any more. Turns FleetManager's task queue into
+  the AssignmentManifest of Objectives WorldEngine/PIBTPlanner expect
+  per tick (goals bound to one Agent each, not a DispatchIntent keyed
+  by agent_id). Exact shape is the open design question this
+  reconnection forces -- not yet decided, deliberately sketched thin.
+end note
 
 MRTASession *-- GridStateManager
 MRTASession *-- ControllerStatusListener
 MRTASession *-- LivePositionStore
 MRTASession *-- ManualClickTranslator
 MRTASession *-- WaypointCommandClient
-MRTASession *-- Simulation
+MRTASession *-- WorldEngine
 MRTASession *-- FleetManager
 MRTASession *-- QueueTaskSource
+MRTASession *-- TaskManifestAdapter
 MRTASession o-- Agent
 
 ControllerStatusListener ..> ManualClickTranslator : click events\n(data.lh2_waypoints)
@@ -149,11 +195,6 @@ ControllerStatusListener ..> LivePositionStore : position events\n(data.lh2_posi
 ManualClickTranslator ..> GridStateManager : uses (mm_to_cell,\nREST fallback)
 LivePositionStore ..> GridStateManager : REST fallback only\n(WS outage)
 WaypointCommandClient ..> GridStateManager : uses (cell_to_mm)
-
-FleetManager o-- QueueTaskSource
-FleetManager *-- Task
-Simulation *-- PIBTCoordinator
-Simulation *-- Agent
 
 MRTACli ..> MRTASession : builds & runs (CLI driver)
 
