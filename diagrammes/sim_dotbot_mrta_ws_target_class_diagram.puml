@@ -1,0 +1,160 @@
+@startuml sim_dotbot_mrta_ws_target_class_diagram
+
+title sim_dotbot_mrta.py — target design: drive arrival from the WS position stream
+
+skinparam classAttributeIconSize 0
+skinparam classFontSize 13
+skinparam ArrowColor #333333
+skinparam ClassBorderColor #4A90D9
+skinparam ClassBackgroundColor #EAF4FF
+skinparam ClassHeaderBackgroundColor #4A90D9
+skinparam ClassHeaderFontColor #FFFFFF
+skinparam PackageBorderColor #888888
+skinparam PackageBackgroundColor #F8F8F8
+
+package "mrta_mode (target — WS-driven position, REST as fallback only)" #E8F5E9 {
+
+    class GridStateManager <<REST client — bootstrap + fallback only>> {
+        + base_url : str
+        + cell_mm : int | None
+        + map_cells_x, map_cells_y : int
+        --
+        + fetch_dotbots() : list[dict]        <GET /controller/dotbots>
+        + fetch_map_size() : (int, int)       <GET /controller/map_size>
+        + set_map_size(width_mm, height_mm) : void
+        + mm_to_cell(x_mm, y_mm) : Position
+        + cell_to_mm(pos) : (float, float)
+        + resolve_conflicts(positions) : dict[str, Position]
+    }
+    note bottom of GridStateManager
+      No longer the step-loop's position source.
+      Used once at startup (map size + initial bot
+      list) and by ControllerStatusListener as the
+      degraded-mode fallback when the WS link is down
+      -- same GET /controller/dotbots as before, just
+      off the hot path.
+    end note
+
+    class ControllerStatusListener <<new, replaces WaypointWatcher — WS client>> {
+        + ws_url : str                         <ws://.../controller/ws/status>
+        - _stop : Event
+        --
+        + start() : void
+        + stop() : void
+        - _listen_forever() : void
+        - _handle_raw(raw) : void
+        - _dispatch(notification) : void
+    }
+    note bottom of ControllerStatusListener
+      Single WS connection, same endpoint as today.
+      _dispatch() now reads *both* payload shapes carried
+      by cmd=2 (UPDATE) instead of keeping one and
+      dropping the other:
+        - data.lh2_waypoints -> click_events queue
+          (consumed by ManualClickTranslator, unchanged)
+        - data.lh2_position   -> LivePositionStore.update()
+          (new: was silently discarded before)
+      Reconnect/backoff logic unchanged from WaypointWatcher.
+    end note
+
+    class LivePositionStore <<new>> {
+        - _positions : dict[str, Position]
+        - _updated : dict[str, Event]
+        --
+        + update(address, position_mm) : void
+        + snapshot() : dict[str, Position]
+        + wait_until_all_arrived(targets, timeout) : set[str]
+    }
+    note bottom of LivePositionStore
+      Arrival is now event-driven: wait_until_all_arrived()
+      blocks on per-bot Events set by update(), instead of
+      DotBotNavigator's old GET /controller/dotbots poll loop.
+      If no WS update arrives before `timeout`, falls back to
+      one GridStateManager.fetch_dotbots() call -- same safety
+      net principle as ManualClickTranslator.reconcile().
+    end note
+
+    class ManualClickTranslator <<unchanged>> {
+        - _commanded : dict[str, Position]
+        --
+        + seed_commanded(dotbots_raw) : void
+        + record_commanded(address, cell) : void
+        + translate(waypoints_mm) : list[Position]
+        + is_self_commanded(event) : bool
+        + reconcile() : list[dict]              <-- REST fallback,
+                                                      GridStateManager.fetch_dotbots()
+    }
+
+    class WaypointCommandClient <<renamed from DotBotNavigator — write-path only>> {
+        + base_url : str
+        + threshold : int
+        --
+        + send(address, waypoints_mm) : void          <PUT /controller/dotbots/{address}/0/waypoints>
+        + send_all_parallel(moved_mm) : void           <N parallel PUTs, same route>
+    }
+    note bottom of WaypointCommandClient
+      Arrival-waiting method removed: that responsibility
+      moved to LivePositionStore, which already has the
+      live data. This class purely issues commands.
+    end note
+
+    class MRTASession <<the "activatable mode" object>> {
+        + sim : Simulation
+        + fleet : FleetManager
+        + queue_source : QueueTaskSource
+        + agents : list[Agent]
+        --
+        + start() : void
+        + stop() : void
+        + handle_click(address, waypoints_mm, source) : void
+        + tick(step) : void
+        - _cancel_agent_tasks(agent_id) : void
+    }
+    note bottom of MRTASession
+      tick() now calls LivePositionStore.wait_until_all_arrived()
+      instead of WaypointCommandClient.wait_until_all_arrived() --
+      same call site, event-driven instead of polling.
+    end note
+
+    class MRTACli <<kept, thinned>> {
+        --
+        + main() : void
+    }
+}
+
+package "simulation (existing engine, unchanged)" #EAF4FF {
+    class Simulation
+    class Agent
+    class Position
+    class FleetManager
+    class QueueTaskSource
+    class Task
+    class PIBTCoordinator
+    class EasiestAllocator
+}
+
+MRTASession *-- GridStateManager
+MRTASession *-- ControllerStatusListener
+MRTASession *-- LivePositionStore
+MRTASession *-- ManualClickTranslator
+MRTASession *-- WaypointCommandClient
+MRTASession *-- Simulation
+MRTASession *-- FleetManager
+MRTASession *-- QueueTaskSource
+MRTASession o-- Agent
+
+ControllerStatusListener ..> ManualClickTranslator : click events\n(data.lh2_waypoints)
+ControllerStatusListener ..> LivePositionStore : position events\n(data.lh2_position)
+
+ManualClickTranslator ..> GridStateManager : uses (mm_to_cell,\nREST fallback)
+LivePositionStore ..> GridStateManager : REST fallback only\n(WS outage)
+WaypointCommandClient ..> GridStateManager : uses (cell_to_mm)
+
+FleetManager o-- QueueTaskSource
+FleetManager *-- Task
+Simulation *-- PIBTCoordinator
+Simulation *-- Agent
+
+MRTACli ..> MRTASession : builds & runs (CLI driver)
+
+@enduml
