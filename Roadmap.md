@@ -14,6 +14,35 @@ experiments. Every item below is justified against that target, not against code
 a script that is merely "long" at 5 bots is a design that actively can't be reasoned about,
 tested, or scaled at 1000.
 
+## 0. Reconnect to the external MAPF_Simulation engine (blocking prerequisite)
+
+`simulation/` here is a vendored snapshot of `~/3A/projets/MAPF_Simulation`
+(`git@github.com:RasdaCorentin/MAPF_Simulation`), not a submodule or an installed package — it was
+copied in once and has evolved independently on both sides since. The upstream repo now works "on
+import" (its own consumers import `core`/`pibt`/`export` rather than getting a copy), and the plan
+is to reconnect this bridge to it the same way instead of maintaining a second, drifting copy.
+
+**This is not a path swap.** Upstream's own `TODO.md` documents three deliberate `refactor!`
+removals since the snapshot was taken: `client/`+`report/` gone, `algo/` gone, and `mrta/` dropped
+outright — "out of scope for this repository now, not merely broken." What remains is `core/`
+(still built around `Objective`, never migrated to the `Zone` this repo's vendored copy moved to)
+plus a new `pibt/` package (`PIBTPlanner`, a `PathPlanner` fed via `AssignmentManifest`/
+`StepOutcome`, not the old `PIBTCoordinator`/`DispatchIntent` contract) and a new `export/` CSV
+package this bridge has no current use for.
+
+Consequence for §1 below and for `AGENT.md`'s current architecture description: `FleetManager`,
+`QueueTaskSource`, `Task` and the allocator (`EasiestAllocator` today) have no upstream home to be
+imported from any more — they must become locally owned inside `mrta_mode/`, along with a new
+adapter translating `FleetManager`'s task queue into the `AssignmentManifest` of `Objective`s
+`WorldEngine`/`PIBTPlanner` expect per tick. Sketched (not yet designed in detail) in
+`diagrammes/sim_dotbot_mrta_ws_target_class_diagram.puml`'s `mrta_mode (local)` package and its
+`TaskManifestAdapter` note — that shape is the open question, and per this repo's
+"class-diagram-based development" rule (`AGENT.md`) it gets validated there before any code moves.
+
+Sequencing: this reconnection is independent of, and should land before, §1's bridge-script
+decomposition — no point designing `bridge/`'s module boundaries around a `FleetManager` import
+path that is about to move.
+
 ## 1. Decompose the bridge scripts before scaling them
 
 `sim_dotbot_mrta.py` (668 lines, see `AGENT.md`) and its abandoned `real_dotbot_mrta.py` fork
