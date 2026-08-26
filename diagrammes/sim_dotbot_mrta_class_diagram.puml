@@ -1,6 +1,6 @@
 @startuml sim_dotbot_mrta_class_diagram
 
-title sim_dotbot_mrta.py — proposed class decomposition (pre-refactor design)
+title sim_dotbot_mrta.py — current-code class decomposition (HTTP/WS surface annotated)
 
 skinparam classAttributeIconSize 0
 skinparam classFontSize 13
@@ -14,22 +14,22 @@ skinparam PackageBackgroundColor #F8F8F8
 
 package "mrta_mode (new — extracted from sim_dotbot_mrta.py)" #FFF0F5 {
 
-    class GridStateManager <<kept as-is>> {
+    class GridStateManager <<kept as-is — REST client>> {
         + base_url : str
         + cell_mm : int | None
         + map_cells_x, map_cells_y : int
         --
-        + fetch_dotbots() : list[dict]
-        + fetch_map_size() : (int, int)
+        + fetch_dotbots() : list[dict]        <GET /controller/dotbots>
+        + fetch_map_size() : (int, int)       <GET /controller/map_size>
         + set_map_size(width_mm, height_mm) : void
         + mm_to_cell(x_mm, y_mm) : Position
         + cell_to_mm(pos) : (float, float)
-        + get_grid_state() : dict[str, Position]
+        + get_grid_state() : dict[str, Position]   <-- calls fetch_dotbots()
         + resolve_conflicts(positions) : dict[str, Position]
     }
 
-    class WaypointWatcher <<kept as-is>> {
-        + ws_url : str
+    class WaypointWatcher <<kept as-is — WS client>> {
+        + ws_url : str                        <ws://.../controller/ws/status>
         - _stop : Event
         --
         + start() : void
@@ -38,6 +38,18 @@ package "mrta_mode (new — extracted from sim_dotbot_mrta.py)" #FFF0F5 {
         - _listen_forever() : void
         - _handle_raw(raw) : void
     }
+    note bottom of WaypointWatcher
+      Connects to the controller's *single* broadcast channel,
+      /controller/ws/status. Every message is a
+      DotBotNotificationCommand — cmd=2 (UPDATE) carries
+      **both** waypoint-set events (data.lh2_waypoints) and
+      continuous LH2 position updates (data.lh2_position),
+      the latter pushed on every advertisement frame the
+      controller receives (PyDotBot controller.py:405-567).
+      _handle_raw() keeps only messages with lh2_waypoints and
+      silently drops the rest — so live position already
+      arrives on this socket but is discarded, unused.
+    end note
 
     class ManualClickTranslator <<new>> {
         - _commanded : dict[str, Position]
@@ -46,7 +58,10 @@ package "mrta_mode (new — extracted from sim_dotbot_mrta.py)" #FFF0F5 {
         + record_commanded(address, cell) : void
         + translate(waypoints_mm) : list[Position]
         + is_self_commanded(event) : bool
-        + reconcile() : list[dict]
+        + reconcile() : list[dict]             <-- falls back to
+                                                    GridStateManager.fetch_dotbots()
+                                                    (GET /controller/dotbots) when
+                                                    the WS link was down
     }
     note bottom of ManualClickTranslator
       absorbs former free functions:
@@ -54,20 +69,26 @@ package "mrta_mode (new — extracted from sim_dotbot_mrta.py)" #FFF0F5 {
       _is_self_commanded, _reconcile_from_rest
     end note
 
-    class DotBotNavigator <<new>> {
+    class DotBotNavigator <<new — write-path REST client only>> {
         + base_url : str
         + threshold : int
         + step_timeout : float
         + settle_s : float
         --
-        + send(address, waypoints_mm) : void
-        + send_all_parallel(moved_mm) : void
-        + wait_until_all_arrived(targets) : set[str]
+        + send(address, waypoints_mm) : void         <PUT /controller/dotbots/{address}/0/waypoints>
+        + send_all_parallel(moved_mm) : void          <N parallel PUTs, same route>
+        + wait_until_all_arrived(targets) : set[str]  <-- polls GridStateManager.fetch_dotbots()
+                                                           (GET /controller/dotbots) in a loop
     }
     note bottom of DotBotNavigator
-      absorbs former free functions:
-      send_waypoints, _send_all_parallel,
-      wait_until_all_arrived
+      Despite the name, this does NOT read the WS status
+      channel: arrival is confirmed by re-polling
+      GET /controller/dotbots on a backoff loop (50ms->500ms),
+      even though WaypointWatcher already holds a live
+      connection to the same controller carrying position
+      updates for free. Two decoupled data paths today by
+      omission, not by an API constraint — see the WS variant
+      of this diagram (sim_dotbot_mrta_ws_target_class_diagram).
     end note
 
     class MRTASession <<new — the "activatable mode" object>> {
@@ -121,8 +142,8 @@ MRTASession *-- FleetManager
 MRTASession *-- QueueTaskSource
 MRTASession o-- Agent
 
-ManualClickTranslator ..> GridStateManager : uses (mm_to_cell)
-DotBotNavigator ..> GridStateManager : uses (cell_to_mm)
+ManualClickTranslator ..> GridStateManager : uses (mm_to_cell,\nREST fallback)
+DotBotNavigator ..> GridStateManager : uses (cell_to_mm,\nREST arrival poll)
 
 FleetManager o-- QueueTaskSource
 FleetManager *-- Task
