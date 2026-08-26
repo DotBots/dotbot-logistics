@@ -1,0 +1,33 @@
+@startmindmap
+title Current mkdocs nav structure (docs/, mkdocs.yml)
+
+* DotBot Logistics docs
+** Home
+** Installation
+** Level 0 -- Run a PIBT
+*** sim_pibt.py
+*** sim_many_pibt.py
+** Level 1 -- Fake bots
+*** sim_dotbot_pibt.py\n(fixed-goal batch)
+*** sim_dotbot_mrta.py <<MRTA>> #Orange
+**** "Try MRTA: click-to-target driving" section
+** Level 2 -- Real bots
+*** real_dotbot_pibt.py
+*** real_dotbot_pibt_batch.py
+** Contributing
+*** index.md
+*** Architecture
+**** Detail A -- mm <-> cell boundary
+**** Detail B -- simulation core engine
+**** Detail C -- PIBT algorithm
+**** Detail D -- MRTA task allocation <<MRTA>> #Orange
+**** Logging: client/control & report/
+*** Improvement
+** Appendix
+*** Upstream platform
+
+legend right
+  |= tag |= meaning |
+  | <back:Orange> MRTA </back> | MRTA-related content, currently split across\nLevel 1 (a mode of one script) and\nContributing > Architecture (one sub-section) --\nno dedicated top-level nav entry today. |
+endlegend
+@endmindmap
