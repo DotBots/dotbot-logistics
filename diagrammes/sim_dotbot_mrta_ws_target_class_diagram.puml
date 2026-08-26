@@ -24,7 +24,9 @@ note as N0
      PathPlanner, not the old PIBTCoordinator. There is no upstream
      task-allocation layer left to import: FleetManager, QueueTaskSource,
      Task and the allocator all move from "borrowed" to "owned by
-     mrta_mode".
+     mrta_mode". Proposed connection: FleetManager becomes a concrete
+     MissionOrchestrator directly (core declares it, abstract, unimplemented)
+     -- see the FleetManager note below for the minimal-diff version.
 end note
 
 package "mrta_mode (WS-driven position, REST as fallback only -- implemented)" #E8F5E9 {
@@ -117,7 +119,6 @@ package "mrta_mode (WS-driven position, REST as fallback only -- implemented)" #
         + engine : WorldEngine
         + fleet : FleetManager
         + queue_source : QueueTaskSource
-        + adapter : TaskManifestAdapter
         + agents : list[Agent]
         --
         + start() : void
@@ -146,9 +147,11 @@ package "MAPF_Simulation (external repo, imported -- core + pibt only)" #EAF4FF 
     class AssignmentManifest
     class StepOutcome
     class PathPlanner <<interface>>
+    class MissionOrchestrator <<interface>>
     class PIBTPlanner
     PathPlanner <|.. PIBTPlanner
     WorldEngine *-- PathPlanner
+    WorldEngine o-- MissionOrchestrator
     WorldEngine *-- Agent
 }
 note bottom of PathPlanner
@@ -157,25 +160,44 @@ note bottom of PathPlanner
   from ~/3A/projets/MAPF_Simulation (git@github.com:RasdaCorentin/
   MAPF_Simulation). No FleetManager, QueueTaskSource, Task, Allocator
   or PIBTCoordinator survive on the other side of this import -- see N0.
+  MissionOrchestrator does, though: it is core's *abstract* replacement
+  for the old Dispatcher seam -- "no concrete implementation in the
+  repository right now" (its own docstring) -- which is exactly the gap
+  FleetManager fills below. No adapter class needed: same seam, one
+  field reshaped.
 end note
 
 package "mrta_mode (local -- task allocation, no longer covered upstream)" #FFF0F5 {
-    class FleetManager
+    class FleetManager <<now implements MissionOrchestrator directly>>
     class QueueTaskSource
     class Task
-    class TaskManifestAdapter <<new -- design open>>
+    MissionOrchestrator <|.. FleetManager
     FleetManager o-- QueueTaskSource
     FleetManager *-- Task
-    TaskManifestAdapter ..> FleetManager
-    TaskManifestAdapter ..> AssignmentManifest
 }
-note bottom of TaskManifestAdapter
-  Replaces EasiestAllocator + the DispatchIntent wiring, neither of
-  which exists upstream any more. Turns FleetManager's task queue into
-  the AssignmentManifest of Objectives WorldEngine/PIBTPlanner expect
-  per tick (goals bound to one Agent each, not a DispatchIntent keyed
-  by agent_id). Exact shape is the open design question this
-  reconnection forces -- not yet decided, deliberately sketched thin.
+note bottom of FleetManager
+  **Proposed connection, minimal-diff:** FleetManager already runs the
+  right cycle (complete -> watchdog -> prune -> intake -> allocate ->
+  intent) and already returns exactly this shape one field removed --
+  old: DispatchIntent(goals: dict[agent_id, Position], priorities).
+  new: AssignmentManifest(goals: list[Objective], priorities) -- same
+  fields, goals keyed by dict vs bound via Objective.attach_to(agent).
+
+  Only three changes, no new class:
+  1. `class FleetManager(Dispatcher)` -> `class FleetManager(MissionOrchestrator)`,
+     `dispatch()` -> `assign_missions()` (rename, same signature shape).
+  2. `_build_intent()`'s body: for each ASSIGNED task, build
+     `Objective(entity_id=task.task_id, position=task.target)
+     .attach_to(task.assignee)` instead of `goals[aid] = task.target` --
+     return `AssignmentManifest(goals=objectives, priorities=...)`.
+  3. Position -> Coordinates2D, Grid -> Grid2D (+ its renamed methods:
+     is_valid->is_within_bounds, remove->unindex, get_agent_at->agent_at,
+     get_entities_at->entities_at, get_all->all_of_kind) -- mechanical,
+     both are structurally identical, confirmed by reading both sources.
+
+  Task, QueueTaskSource, TaskSource, Allocator, EasiestAllocator need
+  NO interface change at all: none of them touch DispatchIntent/
+  AssignmentManifest directly, only FleetManager (the seam) does.
 end note
 
 MRTASession *-- GridStateManager
@@ -186,7 +208,6 @@ MRTASession *-- WaypointCommandClient
 MRTASession *-- WorldEngine
 MRTASession *-- FleetManager
 MRTASession *-- QueueTaskSource
-MRTASession *-- TaskManifestAdapter
 MRTASession o-- Agent
 
 ControllerStatusListener ..> ManualClickTranslator : click events\n(data.lh2_waypoints)
