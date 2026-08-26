@@ -81,6 +81,8 @@ in the same commit — an agent map that lies is worse than no map.)*
 ├── simulator_init_state_8x8.toml— L1 simulator seed, 8x8 grid (250 mm cells)
 ├── docs/                        — MkDocs site: level-0/1/2 guides, installation, contributing, inria/
 ├── simulation/                  — PIBT/MRTA engine, own CLAUDE.md/AGENT.md/CONVENTION.md
+├── mrta_mode/                   — classes behind sim_dotbot_mrta.py's MRTA mode (see below;
+│                                   one concrete class or DTO per file)
 ├── log/                         — experiment outputs (raw_logs/, *_per_run.csv, *_summary.csv)
 ├── sim_pibt.py                  — L0 interactive PIBT viewer
 ├── sim_many_pibt.py             — L0 headless benchmark sweep
@@ -92,7 +94,10 @@ in the same commit — an agent map that lies is worse than no map.)*
 ```
 
 `simulation/` is added to `sys.path` by each top-level script at import time — no install needed,
-no package boundary to cross other than the Python import itself.
+no package boundary to cross other than the Python import itself. `mrta_mode/` is the one
+exception: it adds `simulation/` to `sys.path` once, in its own `__init__.py`, rather than
+requiring `sim_dotbot_mrta.py` to repeat the `sys.path.insert()` dance — importing `mrta_mode`
+from anywhere is enough.
 
 ## The bridge pattern (L1/L2 scripts)
 
@@ -115,37 +120,68 @@ three-part shape — this is the pattern to preserve when migrating or extending
   after each step, since real hardware drifts from the plan), records `RunMetrics`, writes CSVs
   via `run_metrics.py`.
 
-### `sim_dotbot_mrta.py` — a different pattern (2026-07-23)
+### `sim_dotbot_mrta.py` — a different pattern (2026-07-23, split into `mrta_mode/` 2026-08-26)
 
 Not a fixed-goal batch run: it starts every bot **parked** (no goals) and runs **indefinitely**
-(Ctrl+C to stop), waiting for an operator to drive it. It reuses `GridStateManager`,
-`send_waypoints()`, `_send_all_parallel()` and `wait_until_all_arrived()` verbatim (same
-duplication convention as the other bridge scripts), but replaces `build_pibt()` +
-`StaticDispatcher` with `build_mrta()` wiring `mrta.FleetManager` + `mrta.QueueTaskSource` +
-`algo.EasiestAllocator` as the `Simulation`'s dispatcher, and drops the pipelining
-`run_pibt_live()` does (a manual click can land mid-travel and must be reflected in the very next
-`sim.step()`, so pre-computing ahead would either miss it or be thrown away — this script always
-does the plainer step → send → wait, like `real_dotbot_pibt.py`).
+(Ctrl+C to stop), waiting for an operator to drive it. `sim_dotbot_mrta.py` itself is now a thin
+CLI — argparse + wiring only, per `diagrammes/sim_dotbot_mrta_ws_target_class_diagram.puml`. The
+collaborators live in `mrta_mode/`, one concrete class or DTO per file:
+
+- **`GridStateManager`** (`mrta_mode/grid_state_manager.py`) — same shape as the other bridge
+  scripts' inline copy, but bootstrap (initial bot list + map size) and WS-outage fallback only
+  here, not the step-loop's position source (see `LivePositionStore` below).
+- **`ControllerStatusListener`** (`mrta_mode/controller_status_listener.py`, replaces the old
+  `WaypointWatcher`) — the one WS client, on `ws://<base>/controller/ws/status` (**not**
+  `/controller/ws/dotbots`, a separate, bidirectional command-relay channel that never receives
+  broadcasts — confirmed by reading `dotbot/server.py` directly, verify again if this behaviour
+  matters and PyDotBot has moved on since). Every message is a `DotBotNotificationCommand`;
+  `cmd=2` (`UPDATE`) carries *both* waypoint-set events (`data.lh2_waypoints`) and continuous LH2
+  position updates (`data.lh2_position`, pushed on every advertisement frame the controller
+  receives — `dotbot/controller.py:405-567` in the up-to-date PyDotBot checkout at
+  `dotbot-workspace/repos/PyDotBot`). The old `WaypointWatcher` kept only the waypoints half and
+  silently dropped the rest; `ControllerStatusListener` dispatches both — waypoint events to a
+  click queue drained by `MRTASession.tick()`, position events straight into `LivePositionStore`.
+- **`LivePositionStore`** (`mrta_mode/live_position_store.py`, new) — the arrival source. Where
+  every other bridge script's `wait_until_all_arrived()` polls `GET /controller/dotbots` on a
+  50 ms → 500 ms backoff, this one blocks on a `Condition` notified by
+  `ControllerStatusListener`'s position events, and falls back to one REST poll only if no update
+  arrives before the timeout (WS missed it, or is down) — same safety-net principle as
+  `ManualClickTranslator.reconcile()` below.
+- **`ManualClickTranslator`** (`mrta_mode/manual_click_translator.py`) — mm↔cell translation,
+  dedup, self-echo detection (telling apart a manual click from the echo of a `PUT` this script
+  itself just sent, arriving back on the same WS channel), and the REST reconciliation safety net
+  (comparing `GET /controller/dotbots`' `waypoints` field against what the script itself last
+  sent) for clicks made while the WS link was down.
+- **`WaypointCommandClient`** (`mrta_mode/waypoint_command_client.py`) — write-path only:
+  `PUT /controller/dotbots/{address}/0/waypoints`. The WS status channel is broadcast-only from
+  the controller's side; commanding a bot to move always requires this `PUT` regardless of how
+  arrival is detected — `ControllerStatusListener` cannot replace it, only `wait_until_all_arrived`
+  moved off this class.
+- **`MRTASession`** (`mrta_mode/mrta_session.py`) — the "activatable mode" object: owns the
+  `Simulation` + `mrta.FleetManager` + `mrta.QueueTaskSource` + `algo.EasiestAllocator` dispatcher
+  (`MRTASession.connect()` replaces the old `build_mrta()`), and exposes
+  `start()`/`stop()`/`handle_click()`/`tick()` so a caller other than a blocking CLI while-loop —
+  a future frontend — can drive it one step at a time; `run()` wraps `tick()` in the Ctrl+C
+  while-loop for standalone CLI use. Drops the pipelining `run_pibt_live()` does (a manual click
+  can land mid-travel and must be reflected in the very next `sim.step()`, so pre-computing ahead
+  would either miss it or be thrown away — `tick()` always does the plainer step → send → wait,
+  like `real_dotbot_pibt.py`).
 
 **The click path has no PyDotBot-side changes.** The operator uses the existing, unmodified web
 UI exactly as it already works today: select a bot, click a map point, "Apply waypoints" — a
-normal `PUT .../waypoints`. `sim_dotbot_mrta.py` detects that PUT via a `WaypointWatcher`
-background thread listening on the controller's `ws://<base>/controller/ws/status` broadcast
-channel (**not** `/controller/ws/dotbots`, which is a separate, bidirectional command-relay
-channel that never receives broadcasts — confirmed by reading `dotbot/server.py` directly,
-verify again if this behaviour matters and PyDotBot has moved on since), converts the waypoint's
-target cell into an `mrta.Task` restricted to that one bot (`eligible=frozenset({agent_id})`),
-and lets PIBT navigate it there while avoiding every other bot being driven the same way. A
-periodic REST-based reconciliation pass (comparing `GET /controller/dotbots`' `waypoints` field
-against what the script itself last sent) recovers a click made while the WS link was down. A
-re-click on a bot already mid-route overrides the in-flight task rather than queuing behind it —
-matching the fact that the browser's own PUT already overwrites the bot's waypoint list
-unconditionally the instant it lands.
+normal `PUT .../waypoints`. `MRTASession.handle_click()` converts the waypoint's target cell into
+an `mrta.Task` restricted to that one bot (`eligible=frozenset({agent_id})`), and lets PIBT
+navigate it there while avoiding every other bot being driven the same way. A re-click on a bot
+already mid-route overrides the in-flight task rather than queuing behind it — matching the fact
+that the browser's own PUT already overwrites the bot's waypoint list unconditionally the instant
+it lands.
 
-**Cross-repo dependency**: the WS message shape this script parses
-(`{"cmd": 2, "data": {"address": ..., "lh2_waypoints": [...]}}`) is owned by
-`/home/dok/Inria/PyDotBot` (a separate repo, not versioned here) — if that project changes its
-notification schema, `WaypointWatcher._handle_raw()` is what needs updating.
+**Cross-repo dependency**: the WS message shapes this script parses
+(`{"cmd": 2, "data": {"address": ..., "lh2_waypoints": [...]}}` and
+`{"cmd": 2, "data": {"address": ..., "lh2_position": {"x": ..., "y": ...}}}`) are owned by
+`DotBots/PyDotBot` (a separate repo, checked out locally at `dotbot-workspace/repos/PyDotBot`, not
+versioned here) — if that project changes its notification schema,
+`ControllerStatusListener._handle_raw()` is what needs updating.
 
 ### Grid ↔ mm mapping
 
@@ -164,13 +200,18 @@ GET  /controller/dotbots                     → list of bots (filter: lh2_posit
 GET  /controller/map_size                    → { width, height } in mm
 PUT  /controller/dotbots/{addr}/0/waypoints  → { threshold, waypoints: [{x, y}] }
 WS   /controller/ws/status                   → broadcasts { cmd, data } on every state change
-                                                (sim_dotbot_mrta.py only, cmd 2 = UPDATE)
+                                                (sim_dotbot_mrta.py only, cmd 2 = UPDATE;
+                                                 carries both lh2_waypoints and lh2_position)
 ```
 
 This is the seam that changes as the DotBot environment is restructured — if the controller API
-shape changes, `GridStateManager` and `send_waypoints()` are what need updating, in each of the
-four scripts that duplicate them (plus `WaypointWatcher._handle_raw()` in `sim_dotbot_mrta.py` for
-the WS shape specifically).
+shape changes, `GridStateManager` and `send_waypoints()` are what need updating in
+`sim_dotbot_pibt.py`, `real_dotbot_pibt.py` and `real_dotbot_pibt_batch.py` (each still duplicates
+its own inline copy); for `sim_dotbot_mrta.py` the equivalents are
+`mrta_mode/grid_state_manager.py`'s `GridStateManager` and
+`mrta_mode/waypoint_command_client.py`'s `WaypointCommandClient.send()`, plus
+`mrta_mode/controller_status_listener.py`'s `ControllerStatusListener._handle_raw()` for the WS
+shape specifically.
 
 ### Configuration
 
