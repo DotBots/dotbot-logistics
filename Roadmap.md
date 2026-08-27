@@ -14,46 +14,57 @@ experiments. Every item below is justified against that target, not against code
 a script that is merely "long" at 5 bots is a design that actively can't be reasoned about,
 tested, or scaled at 1000.
 
-## 0. Reconnect to the external MAPF_Simulation engine (blocking prerequisite — premise re-checked 2026-08-27, was stale)
+## 0. Reconnect to the external MAPF_Simulation engine (DONE for mrta_mode/, 2026-08-27 — see the two false starts this section went through first)
 
-`simulation/` here is a vendored snapshot of `~/3A/projets/MAPF_Simulation`
-(`git@github.com:RasdaCorentin/MAPF_Simulation`), not a submodule or an installed package — it was
-copied in once and has evolved independently on both sides since. The eventual goal is still to
-reconnect this bridge to the upstream repo instead of maintaining a second, drifting copy — but the
-shape that reconnection takes, described below until 2026-08-27, was never actually checked against
-the upstream checkout and turned out to be wrong.
+`simulation/` here used to be a vendored snapshot of `MAPF_Simulation`
+(`git@github.com:RasdaCorentin/MAPF_Simulation`), not a submodule or an installed package — copied
+in once and evolved independently on both sides since. It has been removed
+(dotbot-logistics `d4e053b`), and `mrta_mode/`/`sim_dotbot_mrta.py` are now reconnected to the
+real upstream package instead of maintaining a second, drifting copy. Getting here took two wrong
+turns, both worth keeping on record since the same mistake (trusting a description of the upstream
+repo instead of the actual checkout in hand) produced both, hours apart:
 
-**What this section used to claim, and what is actually there.** It described upstream as having
-done three deliberate `refactor!` removals (`client/`+`report/`, `algo/`, `mrta/` all gone) and
-landed a new `pibt/` package (`PIBTPlanner` fed via `AssignmentManifest`/`StepOutcome`) plus an
-`export/` CSV package, with `core/` still built around `Objective`. None of that holds. As of
-2026-08-27, `/home/dok/MAPF_Simulation` (branch `MRTA` — same branch name as this repo, not a
-coincidence) still has `algo/`, `client/`, `mrta/`, `report/`, with the **same class names** this
-repo's vendored copy uses (`PIBTCoordinator`, `DispatchIntent`, `FleetManager`, `QueueTaskSource`,
-`EasiestAllocator`, ...). There is no `pibt/` package anywhere in that checkout, no `export/`, no
-`LifelongGoalOrchestrator`, no `AssignmentManifest`. Upstream instead **added** things since the
-snapshot — `LaCAMCoordinator`, `PIBTPlusCoordinator`, `pibt_core.py`, `push_and_swap.py`, LaCAM/
-PIBT+ benchmark scripts — and modified `pibt_coordinator.py`, `client/control/{controller,factory,
-config,driver}.py`, `report/collector.py`, the pygame frontend, `main.py`, without changing the
-package shape. It is not pip-installable and not on `sys.path` — no packaging exists on either
-side yet.
+**Wrong turn 1** (this section's original text): claimed upstream had done three `refactor!`
+removals (`client/`+`report/`, `algo/`, `mrta/` all gone) and landed a new `pibt/` +
+`AssignmentManifest`/`StepOutcome`-based package plus an `export/` CSV package. Never checked
+against any real checkout.
 
-Consequence: the `TaskManifestAdapter`/`LifelongGoalOrchestrator` design sketched in
-`diagrammes/sim_dotbot_mrta_ws_target_class_diagram.puml`'s `mrta_mode (local)` package targets an
-architecture that does not exist upstream — that diagram's second target is invalidated, not just
-outdated (see the note added to the `.puml` itself). `FleetManager`, `QueueTaskSource`, `Task`,
-`EasiestAllocator` do **not** need a local home inside `mrta_mode/`: they are still importable from
-upstream `algo`/`mrta`, same names, same rough shape as `simulation/`'s copy.
+**Wrong turn 2** (this section's text for most of 2026-08-27, after the first correction): checked
+`/home/dok/MAPF_Simulation` (branch `MRTA`), found `algo/`, `client/`, `mrta/`, `report/` still
+there with the old class names, no `pibt/`, no `export/` — and concluded wrong turn 1 was fiction.
+That checkout was real, but **stale**: a second clone of the same remote, 78 commits behind. It was
+never the clone `~/3A/projets/MAPF_Simulation` (this section's own path, from the start) actually
+names — checking a same-named directory instead of the one referenced is not "re-verifying against
+the code," it just relocates the trust problem.
 
-What a real reconnection would actually require, once undertaken: diffing the drifted files
-(`pibt_coordinator.py`, `controller.py`, `factory.py`, `config.py`, `driver.py`, `collector.py`,
-the frontends) file-by-file against the vendored copy to see what API surface changed underneath
-the unchanged names, deciding how this repo depends on the upstream checkout (path insert against
-a local clone, editable install, git submodule — none set up today), and only then retiring
-`simulation/`. **Deliberately not started** — see the 2026-08-27 conversation that caught this
-premise before any of §1 or the rest of this file was built on top of it; the corrected version of
-this section, if reconnection is picked back up, needs its own re-verification pass rather than
-trusting this fix to still hold.
+**What's actually true**, confirmed against `~/3A/projets/MAPF_Simulation` (branch `develop`, tip
+`736c757 "chore: expose core and pibt as an installable package"`, the clone the user actively
+develops in): wrong turn 1 was closer to right than wrong turn 2 gave it credit for. `core/` +
+`pibt/` + `export/` exist, no `algo/`/`client/`/`mrta/`/`report/`; `core/` is still built around
+`Objective` (not the `Zone` this repo's old vendored copy had moved to); `pibt/` has `PIBTPlanner`
+(`AssignmentManifest`/`StepOutcome`-based, confirmed) and `LifelongGoalOrchestrator` — written, per
+its own docstring, *specifically* for `sim_dotbot_mrta.py`'s click-to-target use case
+(`set_target(agent_id, position)`, one mutable slot per agent, no shared pool). A root
+`pyproject.toml` (`name = "mapf-simulation"`, `include = ["core*", "pibt*"]`) makes it
+pip-installable as a git dependency — `requirements.txt` now pulls it from
+`git+https://github.com/RasdaCorentin/MAPF_Simulation.git@develop`.
+
+`FleetManager`, `QueueTaskSource`, `Task`, `EasiestAllocator` have no home anywhere any more,
+upstream or local — not ported, not needed. `LifelongGoalOrchestrator` replaces the whole
+allocation layer with a materially simpler design (no task objects, no eligibility classes, no
+queue); the one gap it leaves that `mrta_mode/mrta_session.py`'s `MRTASession` now closes locally
+is multi-hop waypoint chains (a `_pending_chain` queue per agent, since the orchestrator's target
+slot holds only one position). See
+`diagrammes/sim_dotbot_mrta_ws_target_class_diagram.puml` for the validated design and
+`AGENT.md`'s "Current known inconsistencies" for exactly what shipped.
+
+**Not done**: the other five broken bridge scripts (`sim_pibt.py`, `sim_many_pibt.py`,
+`sim_dotbot_pibt.py`, `real_dotbot_pibt.py`, `real_dotbot_pibt_batch.py`) and
+`sim_dotbot_right_left.py` were not part of this port — same `algo.PIBTCoordinator` →
+`pibt.PIBTPlanner` / `core.Simulation` → `core.WorldEngine` swap would apply, just not done yet.
+Also not verified: `mapf-simulation`'s pip install was still in progress upstream at the time of
+this port, so the `mrta_mode` reconnection was checked by reading the real `core`/`pibt` source
+and syntax-compiling, not by running it end-to-end against a live DotBot simulator.
 
 ## 1. Decompose the bridge scripts before scaling them
 
@@ -116,7 +127,7 @@ DotBot Logistics docs
 │   └── sim_dotbot_mrta.py (click-to-target)
 ├── Level 2 — Real bots
 ├── MRTA                          ← new top-level entry, not a Level-1 subsection
-│   ├── Task allocation model (FleetManager, Task, EasiestAllocator)
+│   ├── Task allocation model (pibt.LifelongGoalOrchestrator, set_target())
 │   └── Bridge scripts (sim_dotbot_mrta.py / real_dotbot_mrta.py once ported)
 ├── Contributing
 │   ├── Architecture (mm↔cell, core engine, PIBT — MRTA detail moves out, see above)
@@ -127,9 +138,11 @@ DotBot Logistics docs
 This is a nav restructuring, not new technical content — the underlying architecture pages
 (`docs/contributing/architecture.md` Detail B/C/D, `docs/level-1-simulator.md`,
 `docs/index.md`) were already written accurately against the current code on the branch that got
-reset; they need re-adding (cherry-picked, not re-derived) before this restructuring, since they
-describe things that still exist (`simulation/mrta/`, `sim_dotbot_mrta.py`'s click-to-target mode)
-independently of the abandoned real-hardware work.
+reset; they need re-adding (cherry-picked, not re-derived) before this restructuring. Their MRTA
+allocation-model content will need a rewrite either way: it described `simulation/mrta/`'s
+`FleetManager`/`Task` model, which no longer exists anywhere (`simulation/` removed, not ported —
+§0), replaced by `pibt.LifelongGoalOrchestrator.set_target()`. `sim_dotbot_mrta.py`'s
+click-to-target *mode* still describes the current behaviour, just not its old implementation.
 
 ## 3. Open questions for the 1000-bot target
 
@@ -142,6 +155,7 @@ of rediscovering them:
 - `GridStateManager.resolve_conflicts()`'s collision-nudge pass and the REST poll it runs on: what
   is its actual complexity, and at what bot count does it stop being negligible?
 - Click-driven MRTA assumes a human operator per click; 1000 bots need either a much higher
-  operator-to-bot ratio (batch/zone task assignment) or a non-manual task source
-  (`QueueTaskSource`'s automated sibling) — this is a `simulation/mrta/` question, not a bridge-layer
-  one, but the bridge's click-watch module (§1) is where any batch-assignment UI would plug in.
+  operator-to-bot ratio (batch/zone task assignment) or a non-manual, automated way to call
+  `set_target()` — `LifelongGoalOrchestrator` itself has no opinion on where targets come from, so
+  this is an `mrta_mode`/upstream-`pibt` question, not a bridge-layer one, but the bridge's
+  click-watch module (§1) is where any batch-assignment UI would plug in.

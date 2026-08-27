@@ -140,26 +140,28 @@ never mattered before now do.
 
 3. **An empty waypoint list must cancel, not be ignored.** The console's "Stop
    nav" sends `putWaypoints(..., [])` (`App.tsx`, `onStopNav`). MRTA sees the
-   echo, `translate([])` yields no cells, and `handle_click` returns at
-   `mrta_mode/mrta_session.py:189` — the task survives and the next tick re-sends
-   a waypoint. **While MRTA is on, the operator's Stop button does nothing.**
-   Call `_cancel_agent_tasks(agent.agent_id)` before that `return`. There is no
-   ambiguity to fear: MRTA never sends an empty list, so an empty list is always
-   the operator.
+   echo, `translate([])` yields no cells, and `handle_click` returns early
+   (`mrta_mode/mrta_session.py`, the `if not cells: return` guard) — the target
+   survives and the next tick re-sends a waypoint. **While MRTA is on, the
+   operator's Stop button does nothing.** There is no ambiguity to fear: MRTA
+   never sends an empty list, so an empty list is always the operator.
 
    This also makes OFF fall out for free — OFF is this same operation applied to
    every bot in the snapshot.
 
-   One caveat worth carrying forward: `_cancel_agent_tasks` belongs to the
-   `FleetManager`/`Task` layer that shipped with the vendored `simulation/` snapshot —
-   removed 2026-08-27, along with the rest of that package (see `AGENT.md`'s "Current
-   known inconsistencies"). `Roadmap.md` §0 used to plan replacing that layer with
-   upstream MAPF_Simulation's `LifelongGoalOrchestrator`; that target turned out not to
-   exist upstream and the section has been corrected — the real upstream repo still has
-   `FleetManager`/`Task` with per-bot eligibility, so this specific loss-of-eligibility
-   risk is not live. Per-bot targeting and per-bot cancellation are still the two things
-   MRTA mode cannot lose whenever reconnection actually happens — this button is one more
-   reason they have to survive it, whatever shape that reconnection takes.
+   **Update, 2026-08-27: the mechanism this fix needs now exists, but the fix
+   itself is still not applied.** `mrta_mode`/`sim_dotbot_mrta.py` were
+   reconnected to the real upstream engine the same day (`Roadmap.md` §0):
+   `MRTASession` now drives `pibt.LifelongGoalOrchestrator` instead of the old
+   `FleetManager`/`Task` model, and `_cancel_agent_tasks()` has no equivalent —
+   nor does it need one. Cancelling an agent's target is just
+   `orchestrator.set_target(agent_id, agent.position)`: `assign_missions()`
+   sees `position == target` on the next tick and clears the slot on its own
+   (the same mechanism `LifelongGoalOrchestrator` already uses for ordinary
+   arrival). Per-bot targeting was never at risk either way — `set_target()`
+   takes an explicit `agent_id`, there was no shared-pool design to lose it to.
+   This fix is exactly as small as it was always going to be; it is just still
+   undone, tracked in `AGENT.md`'s "Current known inconsistencies".
 
 ### D. What OFF means
 
