@@ -66,10 +66,16 @@ git -C PyDotBot checkout feat/mrta-mode-toggle
 pip install -e PyDotBot
 ```
 
-(Already have a PyDotBot checkout somewhere — e.g. `../dotbot-workspace/repos/PyDotBot`? Just
-`git checkout feat/mrta-mode-toggle` there and `pip install -e` that path instead.)
+Already have a PyDotBot checkout? Just `git checkout feat/mrta-mode-toggle` in it and
+`pip install -e` that path instead.
 
 `venv/` is gitignored; there is no committed environment.
+
+> **Want the whole DotBot testbed, not just PyDotBot?** [`DotBots/dotbot-workspace`][workspace]
+> is an agent-first setup that clones every DotBot source repo (PyDotBot included) and builds
+> one shared venv with editable installs. Point a coding agent at that repo and run
+> `/workspace-setup`; then check `feat/mrta-mode-toggle` out in its `PyDotBot` checkout, add
+> this repo's requirements to that venv, and run `mrta_server.py` from it.
 
 ---
 
@@ -201,3 +207,4 @@ bots have LH2 positions; lower `--min-bots` if you're testing with one bot.
 
 [pydotbot-doc]: https://pydotbot.readthedocs.io/en/latest/
 [mapf]: https://github.com/RasdaCorentin/MAPF_Simulation
+[workspace]: https://github.com/DotBots/dotbot-workspace
