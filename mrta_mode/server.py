@@ -36,6 +36,16 @@ from fastapi.responses import JSONResponse
 from .mrta_session import MRTAConnectionError, MRTASession
 
 _TRANSITIONING = ("connecting", "stopping")
+_DETAIL_MAX = 160
+
+
+def _short(msg: str) -> str:
+    """`detail` is a one-line tooltip (Button.md "The contract"). connect()'s
+    RequestException string can be a multi-line urllib3 dump -- keep the
+    front (where "Connection refused" / "Name or service not known" sits)
+    and clip the rest."""
+    one_line = " ".join(msg.split())
+    return one_line if len(one_line) <= _DETAIL_MAX else one_line[: _DETAIL_MAX - 1] + "…"
 
 
 class MrtaMode:
@@ -95,10 +105,10 @@ class MrtaMode:
         try:
             session = MRTASession.connect(**self._connect_kwargs)
         except MRTAConnectionError as e:
-            self._settle_off(str(e))
+            self._settle_off(_short(str(e)))
             return
         except Exception as e:  # keep the server alive on any connect failure
-            self._settle_off(f"connect failed: {e}")
+            self._settle_off(_short(f"connect failed: {e}"))
             return
 
         session.start()
