@@ -14,34 +14,46 @@ experiments. Every item below is justified against that target, not against code
 a script that is merely "long" at 5 bots is a design that actively can't be reasoned about,
 tested, or scaled at 1000.
 
-## 0. Reconnect to the external MAPF_Simulation engine (blocking prerequisite)
+## 0. Reconnect to the external MAPF_Simulation engine (blocking prerequisite — premise re-checked 2026-08-27, was stale)
 
 `simulation/` here is a vendored snapshot of `~/3A/projets/MAPF_Simulation`
 (`git@github.com:RasdaCorentin/MAPF_Simulation`), not a submodule or an installed package — it was
-copied in once and has evolved independently on both sides since. The upstream repo now works "on
-import" (its own consumers import `core`/`pibt`/`export` rather than getting a copy), and the plan
-is to reconnect this bridge to it the same way instead of maintaining a second, drifting copy.
+copied in once and has evolved independently on both sides since. The eventual goal is still to
+reconnect this bridge to the upstream repo instead of maintaining a second, drifting copy — but the
+shape that reconnection takes, described below until 2026-08-27, was never actually checked against
+the upstream checkout and turned out to be wrong.
 
-**This is not a path swap.** Upstream's own `TODO.md` documents three deliberate `refactor!`
-removals since the snapshot was taken: `client/`+`report/` gone, `algo/` gone, and `mrta/` dropped
-outright — "out of scope for this repository now, not merely broken." What remains is `core/`
-(still built around `Objective`, never migrated to the `Zone` this repo's vendored copy moved to)
-plus a new `pibt/` package (`PIBTPlanner`, a `PathPlanner` fed via `AssignmentManifest`/
-`StepOutcome`, not the old `PIBTCoordinator`/`DispatchIntent` contract) and a new `export/` CSV
-package this bridge has no current use for.
+**What this section used to claim, and what is actually there.** It described upstream as having
+done three deliberate `refactor!` removals (`client/`+`report/`, `algo/`, `mrta/` all gone) and
+landed a new `pibt/` package (`PIBTPlanner` fed via `AssignmentManifest`/`StepOutcome`) plus an
+`export/` CSV package, with `core/` still built around `Objective`. None of that holds. As of
+2026-08-27, `/home/dok/MAPF_Simulation` (branch `MRTA` — same branch name as this repo, not a
+coincidence) still has `algo/`, `client/`, `mrta/`, `report/`, with the **same class names** this
+repo's vendored copy uses (`PIBTCoordinator`, `DispatchIntent`, `FleetManager`, `QueueTaskSource`,
+`EasiestAllocator`, ...). There is no `pibt/` package anywhere in that checkout, no `export/`, no
+`LifelongGoalOrchestrator`, no `AssignmentManifest`. Upstream instead **added** things since the
+snapshot — `LaCAMCoordinator`, `PIBTPlusCoordinator`, `pibt_core.py`, `push_and_swap.py`, LaCAM/
+PIBT+ benchmark scripts — and modified `pibt_coordinator.py`, `client/control/{controller,factory,
+config,driver}.py`, `report/collector.py`, the pygame frontend, `main.py`, without changing the
+package shape. It is not pip-installable and not on `sys.path` — no packaging exists on either
+side yet.
 
-Consequence for §1 below and for `AGENT.md`'s current architecture description: `FleetManager`,
-`QueueTaskSource`, `Task` and the allocator (`EasiestAllocator` today) have no upstream home to be
-imported from any more — they must become locally owned inside `mrta_mode/`, along with a new
-adapter translating `FleetManager`'s task queue into the `AssignmentManifest` of `Objective`s
-`WorldEngine`/`PIBTPlanner` expect per tick. Sketched (not yet designed in detail) in
-`diagrammes/sim_dotbot_mrta_ws_target_class_diagram.puml`'s `mrta_mode (local)` package and its
-`TaskManifestAdapter` note — that shape is the open question, and per this repo's
-"class-diagram-based development" rule (`AGENT.md`) it gets validated there before any code moves.
+Consequence: the `TaskManifestAdapter`/`LifelongGoalOrchestrator` design sketched in
+`diagrammes/sim_dotbot_mrta_ws_target_class_diagram.puml`'s `mrta_mode (local)` package targets an
+architecture that does not exist upstream — that diagram's second target is invalidated, not just
+outdated (see the note added to the `.puml` itself). `FleetManager`, `QueueTaskSource`, `Task`,
+`EasiestAllocator` do **not** need a local home inside `mrta_mode/`: they are still importable from
+upstream `algo`/`mrta`, same names, same rough shape as `simulation/`'s copy.
 
-Sequencing: this reconnection is independent of, and should land before, §1's bridge-script
-decomposition — no point designing `bridge/`'s module boundaries around a `FleetManager` import
-path that is about to move.
+What a real reconnection would actually require, once undertaken: diffing the drifted files
+(`pibt_coordinator.py`, `controller.py`, `factory.py`, `config.py`, `driver.py`, `collector.py`,
+the frontends) file-by-file against the vendored copy to see what API surface changed underneath
+the unchanged names, deciding how this repo depends on the upstream checkout (path insert against
+a local clone, editable install, git submodule — none set up today), and only then retiring
+`simulation/`. **Deliberately not started** — see the 2026-08-27 conversation that caught this
+premise before any of §1 or the rest of this file was built on top of it; the corrected version of
+this section, if reconnection is picked back up, needs its own re-verification pass rather than
+trusting this fix to still hold.
 
 ## 1. Decompose the bridge scripts before scaling them
 

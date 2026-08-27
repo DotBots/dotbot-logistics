@@ -13,25 +13,24 @@ skinparam PackageBorderColor #888888
 skinparam PackageBackgroundColor #F8F8F8
 
 note as N0
-  Two independent targets on one diagram, reached in this order:
+  Two independent targets on one diagram:
   1) WS-driven arrival (mrta_mode package) -- *implemented*, see the
      commit that extracted mrta_mode/ and AGENT.md's mrta_mode section.
   2) Retire the vendored simulation/ copy in favour of importing
-     ~/3A/projets/MAPF_Simulation directly -- *not started*, the new
-     part of this diagram. Its own algo/, mrta/, client/, report/ were
-     removed upstream (deliberate refactor!s, see its TODO.md) -- only
-     core/ and pibt/ remain, and pibt/PIBTPlanner is a different
-     PathPlanner, not the old PIBTCoordinator.
-
-     FleetManager, Task, QueueTaskSource, TaskSource, Allocator and
-     EasiestAllocator do NOT exist any more, upstream or otherwise --
-     an earlier version of this diagram proposed porting FleetManager
-     into mrta_mode as a local MissionOrchestrator; that is wrong and
-     is removed below. The package that actually replaces the whole
-     allocation layer is pibt/'s own second MissionOrchestrator,
-     LifelongGoalOrchestrator (pibt/lifelong_orchestrator.py) -- imported
-     wholesale, not reimplemented. See its note below for what that
-     substitution costs.
+     MAPF_Simulation directly -- **INVALIDATED, 2026-08-27**. Everything
+     below this point in the "MAPF_Simulation (external repo...)" package
+     -- pibt/, PIBTPlanner, AssignmentManifest, StepOutcome,
+     LifelongGoalOrchestrator, and the claim that algo/client/mrta/report
+     were removed upstream -- was never checked against the actual
+     upstream checkout and turned out to be fiction. The real
+     /home/dok/MAPF_Simulation (branch MRTA) still has algo/, client/,
+     mrta/, report/, with the SAME class names the vendored copy uses
+     (PIBTCoordinator, DispatchIntent, FleetManager, QueueTaskSource,
+     EasiestAllocator...). No pibt/, no export/, no LifelongGoalOrchestrator
+     exist anywhere in it. See Roadmap.md §0 for the corrected account and
+     what a real reconnection would need. Nothing below the note on
+     PathPlanner in the external-repo package should be trusted without
+     re-deriving it from that checkout first.
 end note
 
 package "mrta_mode (WS-driven position, REST as fallback only -- implemented)" #E8F5E9 {
