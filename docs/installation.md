@@ -1,57 +1,66 @@
 # Installation
 
-This guide **continues from PyDotBot's installation.** Make sure you have a working
-PyDotBot first, then add this project on top of it.
+Nothing here is automated — there is no committed virtualenv and no install script. Do it by
+hand, once.
 
-## Prerequisites: PyDotBot
+## Prerequisites
 
-Follow the [PyDotBot getting-started guide](https://pydotbot.readthedocs.io/en/0.29.1/)
-and install the package with the calibration extra (needed for LH2 localisation at
-[Level 2](level-2-real.md)):
+- **Python 3.12** and `git`.
+- A machine that can run the DotBot **simulator** (`dotbot run simulator`) — no hardware
+  needed for everything on this site.
 
-```bash
-pip install 'pydotbot[calibrate]'
-```
-
-Check it runs:
-
-```bash
-dotbot --help
-```
-
-!!! note "Python environment"
-    Everything here is plain Python (the simulator and driving an existing swarm need
-    nothing else). Building and cable-flashing firmware additionally needs SEGGER Embedded
-    Studio and the nRF Command Line Tools — see PyDotBot's prerequisites. Use a virtual
-    environment so PyDotBot and this project share the same interpreter.
-
-## Get this project
+## 1. The engine and the Python dependencies
 
 ```bash
 git clone https://github.com/DotBots/dotbot-logistics.git
 cd dotbot-logistics
+
+python3.12 -m venv venv
+source venv/bin/activate          # bash/zsh   —   fish: source venv/bin/activate.fish
+
 pip install -r requirements.txt
 ```
 
-`requirements.txt` pulls `pydotbot[calibrate]`, `requests`, and `pygame` (the last one is
-only used by the Level 0 viewer).
+`requirements.txt` pulls:
 
-!!! warning "Currently broken"
-    The PIBT engine these scripts depend on (formerly bundled at `simulation/`) was removed
-    on 2026-08-27 and has no replacement installed yet — see the root `AGENT.md`'s "Current
-    known inconsistencies" and `Roadmap.md` §0. None of the scripts below will run.
+| Package | What it gives you |
+|---|---|
+| `pydotbot[calibrate]` | the DotBot controller, simulator, and web console |
+| `mapf-simulation` | the PIBT engine — `core` + `pibt` — installed straight from `git+https://github.com/RasdaCorentin/MAPF_Simulation.git@develop`, no local checkout needed |
+| `requests`, `websockets` | the controller REST client and the WebSocket click/position listener |
 
-## What's in the box
+## 2. The `/mrta/*` proxy
 
-| Path | Used at | Purpose |
-|------|---------|---------|
-| `sim_pibt.py` | Level 0 | Interactive pygame viewer (edit-in-file scenario). |
-| `sim_many_pibt.py` | Level 0 | Headless PIBT benchmark sweep. |
-| `sim_dotbot_pibt.py` | Level 1 | Drives the DotBot **simulator** through the controller API. |
-| `real_dotbot_pibt.py` | Level 2 | Drives **real** DotBots, step-by-step with a sync barrier. |
-| `real_dotbot_pibt_batch.py` | Level 2 | Parametrised batch test harness (`--bots N`). |
-| `simulator_init_state.toml` | Levels 1–2 | Initial simulated-bot positions for the controller. |
-| `mosquitto.conf` | Level 2 | Local MQTT broker config. |
-| `dotbot.toml` | Level 2 | Controller connection / swarm-id config. |
+The console's **MRTA** pill reaches `mrta_server.py` through a `/mrta/*` reverse-proxy in the
+DotBot controller. That proxy currently exists **only on PyDotBot's `feat/mrta-mode-toggle`
+branch**, so replace the released `pydotbot` in your venv with an editable checkout of it:
 
-You're ready. Continue to [Level 0 — Run a PIBT](level-0-algorithm.md).
+```bash
+git clone https://github.com/DotBots/PyDotBot.git
+git -C PyDotBot checkout feat/mrta-mode-toggle
+pip install -e PyDotBot
+```
+
+Already have a PyDotBot checkout somewhere? Just `git checkout feat/mrta-mode-toggle` there
+and `pip install -e` that path instead.
+
+!!! tip "You can skip this step if…"
+    …you only want the `mrta_server.py --dry-run` wiring check, or you are reusing
+    `mrta_mode/` as a library. Without the proxy the console pill simply renders greyed out
+    as **MRTA N/A** — the console stays fully usable, there is just no MRTA behind it.
+
+## 3. The simulator seed
+
+`dotbot run simulator` needs an **init-state TOML** describing at least two bots. This repo
+no longer ships one; PyDotBot includes a sample (`simulator_init_state.toml` at the root of
+its checkout), or write your own — any TOML with two or more `[[dotbots]]` entries carrying
+`pos_x` / `pos_y` inside your `--map-size` works.
+
+## Check it
+
+```bash
+python -c "import mrta_mode, core, pibt; print('imports ok')"
+dotbot --help        # PyDotBot CLI is on PATH
+```
+
+If both succeed, the install is good. Next: **[Run MRTA mode](run.md)**.

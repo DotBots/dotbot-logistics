@@ -1,53 +1,57 @@
 # DotBot Logistics
 
-**Collision-free multi-robot navigation for a [DotBot](https://pydotbot.readthedocs.io/en/0.29.1/)
-swarm**, built on **PIBT** (Priority Inheritance with Backtracking). Each robot is routed
-on a discrete grid; PIBT guarantees that no two robots ever claim the same cell, which makes
-it a natural fit for **intralogistics** — many small autonomous units moving stock around a
-shared warehouse floor without colliding.
+**MRTA mode for a [DotBot][pydotbot] swarm.** An operator clicks a robot and a point in the
+DotBot web console; **PIBT** (Priority Inheritance with Backtracking) drives that robot there
+one grid cell at a time, routing around every other robot on the floor. Collision-free
+multi-robot navigation for warehouse-style intralogistics — driven by hand, one click at a
+time.
 
-[![Architecture: mm world (DotBot API) ↔ cell world (PIBT)](assets/arch_overview.png)](contributing/architecture.md)
+<video controls muted playsinline preload="metadata"
+       poster="assets/media/mrta-sim-demo.jpg"
+       style="width:100%;max-width:960px;border-radius:8px;display:block;margin:1rem 0">
+  <source src="assets/media/mrta-sim-demo.mp4" type="video/mp4">
+  Your browser can't play this clip — <a href="assets/media/mrta-sim-demo.mp4">download it</a>.
+</video>
 
-*Architecture overview — the boundary between the **mm world** (the DotBot controller's
-REST API, everything in millimetres) and the **cell world** (the PIBT/MRTA engine, everything
-in integer grid cells), bridged by `GridStateManager`. See
-[Contributing → Architecture](contributing/architecture.md) for the detailed diagrams.*
+*MRTA mode driving simulated DotBots through the reworked web console (2× speed).*
 
-!!! warning "Currently broken"
-    The vendored engine this site describes (`simulation/`) was removed on 2026-08-27;
-    every script below is non-functional until reconnection to the real upstream engine is
-    scoped and done (see the root `AGENT.md`'s "Current known inconsistencies" and
-    `Roadmap.md` §0). The diagrams and package paths on this site describe that removed
-    engine and are kept for reference, not as a guide to something you can run today.
+## What this repo is
 
-## What this documentation is for
+`dotbot-logistics` is the **bridge** between a PIBT planning engine and the DotBot
+environment. It holds neither of the two halves it connects:
 
-This site is a **reproduction guide**. It picks up exactly where the
-[PyDotBot installation guide](https://pydotbot.readthedocs.io/en/0.29.1/) leaves off and
-walks you, step by step, through everything that was built here — so you can run it yourself.
+| Half | Where it lives | Role |
+|---|---|---|
+| The planner | [`mapf-simulation`][mapf] (pip-installed) | `core` + `pibt` — the grid, the agents, PIBT, the lifelong goal orchestrator |
+| The robots | [PyDotBot][pydotbot] (separate repo) | the DotBot controller, simulator, and web console |
+| **The bridge** | **this repo** | turns a console click into a `set_target()` call, and a PIBT step into a waypoint the controller understands |
 
-The work is organised as **three abstraction levels of increasing realism**. Each level adds
-one layer between the abstract plan and the physical world, so that if something breaks you
-know *which* layer to blame.
+The one thing you run here is **`mrta_server.py`**, which sits behind the console's **MRTA**
+toggle and does exactly that bridging.
 
-!!! tip "Where do you want to start?"
+!!! note "History"
+    This project used to ship a vendored copy of the planning engine and a family of
+    Level 0/1/2 batch scripts. On 2026-08-27 the vendored engine was removed (replaced by
+    the `mapf-simulation` dependency) and the batch scripts were retired — three sit
+    unported in `test_scripts/` for reference. The full account is in the repo's
+    [`AGENT.md`](https://github.com/DotBots/dotbot-logistics/blob/develop/AGENT.md).
+    Older versions of this site described the removed scripts; it has been rewritten around
+    MRTA mode, the only live path.
 
-    - **Level 0 — [Run a PIBT to see how it works](level-0-algorithm.md).** The pure
-      planner on an abstract grid: an interactive viewer and a headless benchmark. No robot,
-      no controller — just the algorithm.
-    - **Level 1 — [Plug it to fake bots](level-1-simulator.md).** Drive simulated DotBots
-      through the full PyDotBot controller and web UI. Same REST API as the real swarm, so
-      the code you run here runs unchanged on hardware.
-    - **Level 2 — [Vrrrm! Now it's real test time](level-2-real.md).** The same plan on
-      real DotBots: MQTT broker, Mari gateway, LH2 localisation, and the batch test harness
-      used for the experiments.
+## Where to go next
 
-Start with [Installation](installation.md), then follow the levels in order.
+- **[Installation](installation.md)** — a virtualenv, the requirements, and the one PyDotBot
+  branch that carries the `/mrta/*` proxy.
+- **[Run MRTA mode](run.md)** — the three-terminal walkthrough and a worked two-robot
+  example.
+- **[How it works](how-it-works.md)** — click detection, the PIBT step, the synchronisation
+  barrier, with the design diagrams.
+- **[The console toggle](console-toggle.md)** — the ON/OFF pill, its four states, and what
+  changes for an operator while it is on.
+- **[Reference](reference.md)** — every `mrta_server.py` flag, the controller API consumed,
+  and the grid ↔ millimetre mapping.
+- **[Contributing](contributing.md)** — commit style, branch naming, and the
+  class-diagram-first rule.
 
-## The three levels at a glance
-
-| Level | Reality | Entry point | What it answers |
-|-------|---------|-------------|-----------------|
-| **0** | Abstract grid, no robot | `sim_pibt.py`, `sim_many_pibt.py` | Is the planner correct, and where does it break? |
-| **1** | Simulated bots + controller | `dotbot run simulator` + `sim_dotbot_pibt.py` | Does the plan drive bots through the real API? |
-| **2** | Real DotBots | `dotbot run controller` + `real_dotbot_pibt.py` | Does it survive real physics? |
+[pydotbot]: https://pydotbot.readthedocs.io/en/latest/
+[mapf]: https://github.com/RasdaCorentin/MAPF_Simulation

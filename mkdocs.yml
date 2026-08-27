@@ -1,7 +1,7 @@
 site_name: DotBot Logistics
 site_description: >-
-  PIBT collision-free multi-robot navigation for a DotBot swarm — a three-level,
-  reproducible guide from the bare algorithm to real hardware.
+  MRTA mode for a DotBot swarm — click a robot and a point in the console, PIBT drives it
+  there collision-free. Install, run, and design docs for the bridge.
 repo_url: https://github.com/DotBots/dotbot-logistics
 repo_name: DotBots/dotbot-logistics
 
@@ -44,11 +44,9 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Installation: installation.md
-  - Level 0 — Run a PIBT: level-0-algorithm.md
-  - Level 1 — Fake bots: level-1-simulator.md
-  - Level 2 — Real bots: level-2-real.md
-  - Contributing:
-      - contributing/index.md
-      - Architecture: contributing/architecture.md
-      - Improvement: contributing/improvement.md
+  - Run MRTA mode: run.md
+  - How it works: how-it-works.md
+  - The console toggle: console-toggle.md
+  - Reference: reference.md
+  - Contributing: contributing.md
   - Appendix: appendix.md
