@@ -41,3 +41,19 @@ class WaypointCommandClient:
                     future.result()
                 except requests.RequestException as e:
                     print(f"    -> Send error {addr[:8]}...: {e}")
+
+    def send_stop(self, addresses: list[str]) -> None:
+        """PUT an empty waypoint list to each address -- the controller's own
+        "Stop nav", fleet-wide (the MRTA mode button's OFF, Button.md D).
+        Best-effort: a failed stop is logged, not raised, so OFF cannot hang
+        on one unreachable bot."""
+        if not addresses:
+            return
+        with ThreadPoolExecutor(max_workers=len(addresses)) as executor:
+            futures = {executor.submit(self.send, addr, []): addr for addr in addresses}
+            for future in as_completed(futures):
+                addr = futures[future]
+                try:
+                    future.result()
+                except requests.RequestException as e:
+                    print(f"    -> Stop error {addr[:8]}...: {e}")

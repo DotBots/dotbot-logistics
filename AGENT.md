@@ -115,18 +115,43 @@ the "Roadmap" section's §0, including the stale-clone mistake this correction f
 `PUT .../waypoints` click on one bot was detected over the WS status channel, translated to a
 target cell, driven through `orchestrator.set_target()` → `WorldEngine.advance_time_step()` →
 `PIBTPlanner`, and the bot walked the Manhattan path to the target one cell per tick, waiting for
-real arrival at each step before continuing. `mapf-simulation` itself is still not installed
-anywhere in this project's own environment — this run borrowed `core`/`pibt` via `PYTHONPATH`
-against the `~/3A/projets/MAPF_Simulation` checkout directly, and pydotbot from an unrelated
-project's venv (`dotbot-workspace/.venv`) rather than a `dotbot-logistics`-local one, which still
-does not exist. A durable local install (this project's own venv, `pip install -r
-requirements.txt`) is still open work. Also not carried over on purpose: Button.md's fix C.3 (an
-empty waypoint list — the operator's "Stop nav" — should cancel the agent's target, not be
-ignored) is still unapplied; the new engine makes that fix trivial
-(`orchestrator.set_target(agent_id, agent.position)`) but it is still a separate, undone change.
+real arrival at each step before continuing. That run predated the local venv: it borrowed
+`core`/`pibt` via `PYTHONPATH` against `~/3A/projets/MAPF_Simulation` and pydotbot from
+`dotbot-workspace/.venv`.
 
-*(If this section goes stale — scripts fixed, or newly broken some other way — update it in the
-same commit that changes the fact: an agent map that lies is worse than no map.)*
+**The project-local venv now exists (2026-08-27).** `python3.12 -m venv venv && ./venv/bin/pip
+install -r requirements.txt` — `mapf-simulation` builds and installs from its git URL (provides
+`core`/`pibt`), alongside `pydotbot`, `fastapi`/`uvicorn`, `websockets`, `requests`. On top of
+that, `./venv/bin/pip install -e ../dotbot-workspace/repos/PyDotBot` replaces the released
+`pydotbot` with the editable local checkout (branch `feat/mrta-mode-toggle`) so the same venv also
+carries the `/mrta/*` proxy. `venv/` is gitignored. `./venv/bin/python mrta_server.py` and
+`sim_dotbot_mrta.py` now run with no `PYTHONPATH` trick.
+
+**The MRTA mode button is now wired end to end (2026-08-27), not yet verified live.** All of
+`Button.md`'s A/B/C/D shipped: the 3 restartability fixes (C.1 `ControllerStatusListener.stop()`
+truly stops + joins the WS thread; C.2 `LivePositionStore.wait_until_all_arrived()` is
+interruptible; C.3 an empty waypoint list cancels the agent's target via
+`orchestrator.set_target(agent_id, agent.position)`), the HTTP server (`mrta_mode/server.py`'s
+`MrtaMode` state machine + `mrta_server.py` CLI), the OFF sequence (D — `MRTASession.halt_all()` +
+`WaypointCommandClient.send_stop()`, run in the stop-flag → wake-wait → join → PUT-[] order), and
+the PyDotBot `/mrta/*` proxy (in the `dotbot-workspace/repos/PyDotBot` checkout, branch
+`feat/mrta-mode-toggle`, commit "dotbot: proxy /mrta/* to the MRTA mode server"). Design:
+`diagrammes/mrta_mode_button_architecture.puml` + `diagrammes/mrta_mode_button_state_machine.puml`.
+Checked so far (in the new `venv/`): unit-level state-machine walk (off → connecting →
+409-on-double-POST → off on connect failure), the proxy returning 502→"MRTA N/A" when nothing is
+behind it, and PyDotBot's 79 console-web tests. **Not** checked: the live path (`Button.md` "How to
+verify" step 4 — two bots routed around each other, OFF mid-travel stops them where they are).
+Still open: the drive-pad `move_raw`-vs-AUTO conflict from `Button.md`'s "What the button changes
+for everything else" (unaddressed — gate the pad or treat `move_raw` as a per-bot cancel).
+
+**Driving is per-bot**, unchanged by the button: select one bot, click a point, "Apply waypoints"
+→ one `PUT` → `handle_click()` → `set_target()` for that one `agent_id`. To move two bots, do it
+twice with two *different* targets; PIBT then routes both around each other. There is no
+"select two bots + one point" gesture, and sending two agents to the *same* cell is a collision
+`LifelongGoalOrchestrator` does not arbitrate (left to the caller — see the class-diagram note).
+
+*(If this section goes stale — scripts fixed, the button verified or newly broken — update it in
+the same commit that changes the fact: an agent map that lies is worse than no map.)*
 
 ## Layout
 
@@ -144,7 +169,9 @@ same commit that changes the fact: an agent map that lies is worse than no map.)
 ├── simulator_init_state_8x8.toml— L1 simulator seed, 8x8 grid (250 mm cells)
 ├── docs/                        — MkDocs site: level-0/1/2 guides, installation, contributing, inria/
 ├── mrta_mode/                   — classes behind sim_dotbot_mrta.py's MRTA mode (see below;
-│                                   one concrete class or DTO per file; reconnected, see above)
+│                                   one concrete class or DTO per file; reconnected, see above).
+│                                   mrta_mode/server.py = the console-toggle HTTP server (MrtaMode)
+├── mrta_server.py               — thin CLI: serve mrta_mode's MrtaMode behind the console MRTA toggle
 ├── log/                         — experiment outputs (raw_logs/, *_per_run.csv, *_summary.csv)
 ├── sim_pibt.py                  — L0 interactive PIBT viewer (broken, see above)
 ├── sim_many_pibt.py             — L0 headless benchmark sweep (broken, see above)

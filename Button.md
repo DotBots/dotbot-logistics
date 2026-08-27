@@ -1,8 +1,20 @@
 # The MRTA mode button
 
 An ON/OFF toggle in the DotBot web console that turns this repository's MRTA mode
-on and off. **The button exists; nothing behind it does yet.** This file is the
-contract it already speaks and the list of what has to be built for it to work.
+on and off. This file is the contract it speaks and the record of what was built
+behind it.
+
+> **Status — 2026-08-27: A, B, C and D are all implemented; live verification is
+> still pending.** The `/mrta/*` proxy (A) is in the `feat/mrta-mode-toggle`
+> branch of the PyDotBot checkout; the HTTP server (B), the restartability fixes
+> (C) and the OFF sequence (D) are in `mrta_mode/` here (`server.py`,
+> `mrta_server.py`, and the C.1/C.2/C.3 changes to `controller_status_listener.py`
+> / `live_position_store.py` / `mrta_session.py`). Design:
+> `diagrammes/mrta_mode_button_architecture.puml` and
+> `diagrammes/mrta_mode_button_state_machine.puml`. What is **not** done: the live
+> end-to-end check (step 4 below), a project-local venv, and the drive-pad
+> `move_raw` conflict in "What the button changes for everything else". The
+> per-subsection notes below record what shipped.
 
 Read `AGENT.md` first for what MRTA mode is. The short version: `mrta_mode`
 watches the controller's REST + WS surface, intercepts the waypoints an operator
@@ -68,12 +80,24 @@ The console polls status every 1.5 s and holds its optimistic label while a POST
 is in flight. State lives in the MRTA process, never in the browser: two consoles
 open on the same testbed have to agree, and closing one must change nothing.
 
-## What has to be built
+## What was built
 
 Four pieces, in dependency order. A and B make the button work; C and D make it
-correct.
+correct. All four shipped 2026-08-27 — the "**Done:**" note under each records
+what landed against the plan that follows it.
 
 ### A. The `/mrta/*` proxy in PyDotBot
+
+**Done:** PyDotBot commit "dotbot: proxy /mrta/* to the MRTA mode server
+(dotbot-logistics)" on branch `feat/mrta-mode-toggle`. `mrta_url` (default
+`http://localhost:8002`, `--mrta-url` / `[run.controller] mrta_url` /
+`DOTBOT_MRTA_URL`) threaded through `__init__.py`, `config.py`, `controller.py`,
+`controller_app.py`; `mrta_proxy` in `server.py` mirrors `swarmit_proxy` minus
+the SSE/streaming machinery (plain 5 s timeout, `Response` not
+`StreamingResponse`). The `/mrta` prefix is stripped, so the server sees
+`/status` and `/mode`. `doc/cli/run.md` and `doc/reference/configuration.md`
+updated. Verified: `/mrta/status` with nothing behind it returns 502, which the
+console reads as `MRTA N/A`; 79 console-web tests still pass.
 
 Same shape as the existing swarmit proxy — `dotbot/server.py:392-423`,
 `swarmit_url` threaded through `config.py:149`, `controller_app.py:261-323`,
@@ -94,7 +118,19 @@ possible break: the controller learns one URL, never anything about MRTA.
 
 ### B. The MRTA HTTP server, here
 
-New module, say `mrta_mode/server.py`, owning three things:
+**Done:** `mrta_mode/server.py` — `MrtaMode` owns the state machine + session
+lifecycle (state is process-global under a `threading.Lock` so two polling
+consoles agree); `build_app()` is a small FastAPI app (`GET /status`,
+`POST /mode {on}`); `serve()` runs it on uvicorn. `connect()` and the `tick()`
+loop run on a worker thread, never on the serving loop. A POST during a
+transition is refused `409`; a POST matching the settled state is a `202` no-op.
+`mrta_server.py` is the CLI (`python mrta_server.py [--mrta-port N] [--dry-run]`,
+mirroring `sim_dotbot_mrta.py`'s connect args). FastAPI/uvicorn come in via
+pydotbot and are imported lazily, so `mrta_mode/__init__.py` still imports
+without them for the plain CLI. Verified at unit level: the full
+off→connecting→(409)→off-on-failure walk, plus a clamped one-line `detail`.
+
+New module, `mrta_mode/server.py`, owning three things:
 
 1. **The state machine.** `off → connecting → on → stopping → off`, and nothing
    else. Reject every other transition; that rejection is what stops a double
@@ -120,6 +156,21 @@ outcome. A failed `connect()` (`MRTAConnectionError`) lands back in `off` with
 its message in `detail`, which is exactly what the tooltip is for.
 
 ### C. Three fixes that make `MRTASession` genuinely restartable
+
+**Done, all three:**
+- **C.1** — `ControllerStatusListener` now owns an explicit event loop (published
+  as `_loop`); `stop()` schedules `_aio_stop.set()` onto it, the read loop races
+  `recv()` against that Event through `asyncio.wait`, and `stop()` joins the
+  thread (5 s timeout). No more leaked thread/socket per OFF/ON.
+- **C.2** — `LivePositionStore.interrupt()` sets a flag and `notify_all()`s on the
+  same `Condition` the wait parks on; `wait_until_all_arrived()` returns
+  immediately on it and skips the REST reconcile + `settle_s`. `MRTASession.stop()`
+  calls it.
+- **C.3** — `_handle_raw()` forwards `lh2_waypoints == []` (was: dropped on
+  truthiness); `handle_click()` treats an empty `waypoints_mm` as the operator's
+  Stop nav and calls `set_target(agent_id, agent.position)` + clears the pending
+  chain. A non-empty payload that merely dedups to nothing keeps the old
+  early-return.
 
 The CLI starts one session and exits; a toggle starts many. Three things that
 never mattered before now do.
@@ -160,10 +211,16 @@ never mattered before now do.
    (the same mechanism `LifelongGoalOrchestrator` already uses for ordinary
    arrival). Per-bot targeting was never at risk either way — `set_target()`
    takes an explicit `agent_id`, there was no shared-pool design to lose it to.
-   This fix is exactly as small as it was always going to be; it is just still
-   undone, tracked in `AGENT.md`'s "Current known inconsistencies".
+   This fix is exactly as small as it was always going to be. **Applied
+   2026-08-27** — see the C.3 note at the top of section C.
 
 ### D. What OFF means
+
+**Done:** `MRTASession.halt_all()` drops every `_active_target` / `_pending_chain`
+entry and calls `WaypointCommandClient.send_stop(self.addresses)` (parallel,
+best-effort `PUT []`). `MrtaMode._stop_session()` runs the load-bearing order
+below: `stop_flag.set()` → `session.stop()` (wakes the arrival wait) →
+`tick_thread.join(10 s)` → `session.halt_all()`.
 
 **OFF stops the bots.** Not "stops planning and lets them coast to their last
 commanded cell". The order is load-bearing:

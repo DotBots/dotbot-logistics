@@ -1,0 +1,88 @@
+@startuml mrta_mode_button_architecture
+
+title MRTA mode button — where each piece lives, and the exact PyDotBot delta
+
+skinparam componentStyle rectangle
+skinparam DefaultFontSize 13
+skinparam ArrowColor #333333
+skinparam ComponentBorderColor #4A90D9
+skinparam ComponentBackgroundColor #EAF4FF
+skinparam PackageBorderColor #888888
+skinparam PackageBackgroundColor #F8F8F8
+skinparam NoteBackgroundColor #FFF8E1
+skinparam NoteBorderColor #E0C060
+
+legend right
+  Complements the mrta_mode class diagram
+  (sim_dotbot_mrta_ws_target_class_diagram.puml)
+  and the state machine
+  (mrta_mode_button_state_machine.puml).
+  __Colour__
+  green = already exists / shipped
+  amber = new in this change
+end legend
+
+' Declared top -> bottom so the request/data flow reads straight down.
+
+package "PyDotBot  (external repo — controller + web console)" as PD #F8F8F8 {
+  package "console-web/  (unified web UI, already shipped)" as WEB #C8E6C9 {
+    [MRTA pill\nMrtaToggle.tsx · useMrta.ts (poll 1.5s) · mrta.ts · api.ts] as PILL #FFE0B2
+    [map · drive pad · waypoints UI\n(unchanged: a click is still PUT .../waypoints)] as MAPUI #C8E6C9
+  }
+  [dotbot/server.py — /mrta/{path} reverse-proxy -> mrta_url\n(default http://localhost:8002, prefix stripped)] as PROXY #FFE0B2
+  [controller — REST /controller/*  +  WS /controller/ws/status] as CTRL #C8E6C9
+}
+note right of PILL
+  Shipped on feat/mrta-mode-toggle (mrta.ts + 13 tests,
+  MrtaToggle.tsx, useMrta.ts, api.ts, 4 lines of App.tsx).
+  Nothing behind the proxy -> greyed "MRTA N/A", the
+  intended resting state.
+end note
+note right of PROXY
+  The ENTIRE PyDotBot backend delta (Button.md A): ~40 lines
+  copied from the /swarmit/* proxy. Threads one URL
+  (mrta_url / --mrta-url / DOTBOT_MRTA_URL). The controller
+  learns one URL, nothing else about MRTA.
+end note
+
+package "dotbot-logistics  (this repo — the bridge)" as BRIDGE #F8F8F8 {
+  [mrta_server.py — thin CLI (argparse -> serve())] as SERVERCLI #FFE0B2
+  [mrta_mode/server.py — MrtaMode\nstate machine + session lifecycle · FastAPI · session on a thread] as SERVER #FFE0B2
+  package "mrta_mode/  (reconnected to core+pibt, 2026-08-27)" as MM #C8E6C9 {
+    [MRTASession\nconnect / start / stop / tick / handle_click / halt_all] as SESSION
+    [ControllerStatusListener · LivePositionStore · ManualClickTranslator\nWaypointCommandClient · GridStateManager] as COLLAB
+  }
+}
+note right of SERVER
+  MrtaMode builds a FRESH MRTASession on every ON (fleet
+  snapshotted at connect()), runs tick() on a worker thread —
+  never on the loop serving the routes (Button.md B).
+end note
+note right of MM
+  Amber behaviour added here = the 3 restartability fixes (Button.md C):
+  C.1 listener.stop() truly stops the WS thread + joins it
+  C.2 wait_until_all_arrived() is interruptible (no ~4.3s OFF stall)
+  C.3 empty waypoint list == "Stop nav" -> cancel the target
+  + halt_all() / WaypointCommandClient.send_stop() = the OFF path (Button.md D)
+end note
+
+package "MAPF_Simulation  (external repo, pip-installed as mapf-simulation — unchanged)" as MAPF #C8E6C9 {
+  [core: WorldEngine · Grid2D · Agent · Coordinates2D] as CORE
+  [pibt: PIBTPlanner · LifelongGoalOrchestrator] as PIBT
+}
+
+PILL   -down->  PROXY   : GET /mrta/status\nPOST /mrta/mode {on}
+PROXY  -down->  SERVER  : GET /status\nPOST /mode {on}
+note on link
+  body {state, bots, detail};  state = off | connecting | on | stopping.
+  'unavailable' is inferred client-side from 404/502/timeout — never sent.
+end note
+SERVERCLI -down-> SERVER : python mrta_server.py
+SERVER -down->  SESSION : one MRTASession per ON
+SESSION -right-> COLLAB
+SESSION -down->  CORE   : advance_time_step()
+SESSION -down->  PIBT   : set_target(agent_id, cell)
+COLLAB -left->   CTRL   : GET /controller/dotbots\nPUT .../0/waypoints\nWS /controller/ws/status
+CTRL   -up->     MAPUI  : operator drives bots from the same UI as always
+
+@enduml

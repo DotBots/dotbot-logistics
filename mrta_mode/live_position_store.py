@@ -6,6 +6,12 @@ backoff) with an event-driven wait: wait_until_all_arrived() blocks on a
 Condition notified by update(), and only falls back to one REST poll if the
 WS link missed an update or is down -- same safety-net principle as
 ManualClickTranslator.reconcile().
+
+The wait is interruptible: interrupt() wakes it immediately and makes it
+return whatever has arrived so far, skipping the REST reconcile and the
+settle sleep. The MRTA mode button's OFF path needs this -- otherwise every
+OFF waits out step_timeout + settle_s (~4.3s) before the bots are even told
+to stop (Button.md C.2 / D).
 """
 
 import math
@@ -24,11 +30,23 @@ class LivePositionStore:
         self._gsm = gsm
         self._condition = threading.Condition()
         self._positions_mm: dict[str, tuple[float, float]] = {}
+        self._interrupted = threading.Event()
 
     def update(self, address: str, x_mm: float, y_mm: float) -> None:
         with self._condition:
             self._positions_mm[address] = (x_mm, y_mm)
             self._condition.notify_all()
+
+    def interrupt(self) -> None:
+        """Wake an in-flight wait_until_all_arrived() now and make it return.
+        Notifies through the same Condition the wait blocks on -- setting the
+        flag alone would not unpark it (Button.md C.2)."""
+        with self._condition:
+            self._interrupted.set()
+            self._condition.notify_all()
+
+    def clear_interrupt(self) -> None:
+        self._interrupted.clear()
 
     def snapshot(self) -> dict[str, tuple[float, float]]:
         with self._condition:
@@ -46,9 +64,16 @@ class LivePositionStore:
 
         with self._condition:
             arrived = self._arrived_locked(target_mm, threshold)
-            while len(arrived) < len(target_mm) and time.time() < deadline:
+            while (
+                len(arrived) < len(target_mm)
+                and time.time() < deadline
+                and not self._interrupted.is_set()
+            ):
                 self._condition.wait(timeout=max(0.0, deadline - time.time()))
                 arrived = self._arrived_locked(target_mm, threshold)
+
+        if self._interrupted.is_set():
+            return arrived
 
         missing = set(target_mm) - arrived
         if missing:
