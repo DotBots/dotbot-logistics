@@ -1,53 +1,77 @@
 # AGENT.md
 
-> Project map for coding agents working in `dotbot-logistics`. Read this before touching any
-> root-level script, and read the "Current known inconsistencies" section below first — most
-> L0/L1/L2 scripts are currently broken, `mrta_mode`/`sim_dotbot_mrta.py` are not (see why there).
-> Per-folder documentation rule (see "Rules and invariants" below): any folder that grows its own
-> `AGENT.md` gets read before you work
-> inside it — this file does not repeat folder-local guides.
+> Project map for coding agents working in `dotbot-logistics`. The only live code path is
+> `mrta_mode/` + `mrta_server.py` (the console MRTA toggle). The old L0/L1/L2 bridge scripts
+> were removed on 2026-08-27 — three are kept as unported reference under `test_scripts/`, the
+> rest are gone (`git log --diff-filter=D --name-only` to see what). Read "Current known
+> inconsistencies" below before trusting any older description in this file or in `docs/`.
+> Per-folder documentation rule (see "Rules and invariants" below): any folder that grows its
+> own `AGENT.md` gets read before you work inside it — this file does not repeat folder-local
+> guides.
 
-## Using this repo in your own work
+## Install this repo (to run it, or to reuse a piece of it)
 
-If you are an agent picking this repo up for the first time — to run it, extend it, or lift a
-piece of it (the `mrta_mode` click-to-target pattern, the bridge-script shape) into a different
-project — this is the environment setup that actually works, verified 2026-08-27 end-to-end
-against a live `dotbot run simulator`. There is no committed venv and none of this is automated
-yet, so do it by hand:
+If you are an agent picking this repo up — to run MRTA mode, extend it, or lift the `mrta_mode/`
+click-to-target pattern into another project — this is the setup verified against a live
+`dotbot run simulator`. There is no committed venv and none of this is automated; do it by hand.
+
+### 1. The engine and the Python deps
 
 ```bash
 git clone https://github.com/DotBots/dotbot-logistics.git
 cd dotbot-logistics
-python3 -m venv venv && source venv/bin/activate   # this repo has no venv of its own — make one
+python3.12 -m venv venv && source venv/bin/activate   # this repo has no venv of its own
 pip install -r requirements.txt
 ```
 
-`requirements.txt` pulls `pydotbot[calibrate]` (the DotBot controller, simulator, and web UI),
-`requests`, `pygame` (Level 0 viewer only), `websockets` (the MRTA click-detection listener), and
-`mapf-simulation` — the PIBT/MRTA engine, installed as a git dependency straight from
-`git+https://github.com/RasdaCorentin/MAPF_Simulation.git@develop` (`core` + `pibt`, no local
-checkout needed; see that repo's own `README.md`/`AGENT.md` for exactly what each package
-exposes).
+`requirements.txt` pulls:
 
-Then, to see it actually move something:
+- `pydotbot[calibrate]` — the DotBot controller, simulator, and web console
+- `mapf-simulation` — the PIBT engine (`core` + `pibt`), installed straight from
+  `git+https://github.com/RasdaCorentin/MAPF_Simulation.git@develop`; no local checkout needed
+  (see that repo's own `README.md`/`AGENT.md` for what each package exposes)
+- `requests`, `websockets` — the controller REST client and the WS click/position listener
+
+### 2. The `/mrta/*` proxy (only to drive it from the console)
+
+`mrta_server.py` is reached by the DotBot web console's "MRTA" pill through a `/mrta/*` proxy
+that currently exists only on PyDotBot's `feat/mrta-mode-toggle` branch. Replace the released
+`pydotbot` in the venv with that editable checkout:
 
 ```bash
-dotbot run simulator --map-size 2000x2000 --simulator-init-state simulator_init_state.toml
-# in a second terminal:
-python sim_dotbot_mrta.py
+pip install -e ../dotbot-workspace/repos/PyDotBot   # branch feat/mrta-mode-toggle
 ```
 
-Open `http://localhost:8000/PyDotBot/`, select a bot, click a point on the map, click "Apply
-waypoints" — PIBT drives it there, avoiding every other bot. `Ctrl+C` to stop.
-`sim_dotbot_mrta.py` is the one script currently reconnected to the real engine — see "Current
-known inconsistencies" below for which others are not, yet.
+Skip this if you only want the `--dry-run` wiring check, or if you are reusing `mrta_mode/` as a
+library — the proxy is a console-integration convenience, not a dependency of the engine.
 
-**Reusing a piece of this instead of the whole repo?** `mrta_mode/` is self-contained: it depends
-only on `core`/`pibt` (`pip install mapf-simulation`, above) and the DotBot controller's REST/WS
-surface — not on any other file in this repo. `mrta_mode/mrta_session.py`'s `MRTASession` is the
-entry point (`connect()`/`start()`/`handle_click()`/`tick()`/`stop()`);
-`diagrammes/sim_dotbot_mrta_ws_target_class_diagram.puml` is the class diagram to read before the
-code, per this repo's own "class-diagram-based development" rule (see "Rules and invariants").
+### 3. Run the smoke test
+
+```bash
+# terminal 1 — simulated swarm. Needs a seed TOML with >= 2 bots; the PyDotBot checkout ships
+#              one at ../dotbot-workspace/repos/PyDotBot/simulator_init_state.toml. The proxy
+#              target is set with --mrta-url (or [run.controller] mrta_url, or DOTBOT_MRTA_URL).
+dotbot run simulator --map-size 2000x2000 \
+    --simulator-init-state ../dotbot-workspace/repos/PyDotBot/simulator_init_state.toml \
+    --mrta-url http://localhost:8002
+
+# terminal 2
+python mrta_server.py            # serves 0.0.0.0:8002; add --dry-run to build without sending
+```
+
+Open `http://localhost:8000/PyDotBot/`, click the "MRTA" pill ON, then select a bot, click a map
+point, "Apply waypoints" — PIBT drives it there while routing around every other bot. Toggle OFF
+to stop every bot where it stands. `Ctrl+C` in terminal 2 shuts the server down.
+
+### Reusing only `mrta_mode/`
+
+`mrta_mode/` is self-contained: it depends on `core`/`pibt` (`pip install mapf-simulation`) and
+the DotBot controller's REST/WS surface — nothing else in this repo.
+`mrta_mode/mrta_session.py`'s `MRTASession` is the entry point
+(`connect()` / `start()` / `handle_click()` / `tick()` / `stop()`); `mrta_mode/server.py`'s
+`MrtaMode` wraps it in the ON/OFF state machine. Read
+`diagrammes/sim_dotbot_mrta_ws_target_class_diagram.puml` before the code, per this repo's own
+"class-diagram-based development" rule (see "Rules and invariants").
 
 ## What this project is
 
