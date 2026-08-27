@@ -6,8 +6,16 @@ hand, once.
 ## Prerequisites
 
 - **Python 3.12** and `git`.
+- **A working DotBot environment is a precondition** — specifically a PyDotBot on the
+  `feat/mrta-mode-toggle` branch, which is the only one that carries the `/mrta/*` proxy the
+  console toggle needs. Step 2 sets that up from a plain PyDotBot clone. If you want the whole
+  DotBot testbed instead of PyDotBot alone, [`DotBots/dotbot-workspace`][workspace] is an
+  agent-first setup (`/workspace-setup`) that clones every DotBot repo into one shared venv —
+  use its `PyDotBot` checkout for step 2 and add this repo's `requirements.txt` to that venv.
 - A machine that can run the DotBot **simulator** (`dotbot run simulator`) — no hardware
   needed for everything on this site.
+
+[workspace]: https://github.com/DotBots/dotbot-workspace
 
 ## 1. The engine and the Python dependencies
 
