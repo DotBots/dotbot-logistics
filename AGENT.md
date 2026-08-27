@@ -1,9 +1,10 @@
 # AGENT.md
 
 > Project map for coding agents working in `dotbot-logistics`. Read this before touching any
-> root-level script, and read the "Current known inconsistencies" section below first — every
-> L0/L1/L2 script is currently broken (see why there). Per-folder documentation rule (see "Rules
-> and invariants" below): any folder that grows its own `AGENT.md` gets read before you work
+> root-level script, and read the "Current known inconsistencies" section below first — most
+> L0/L1/L2 scripts are currently broken, `mrta_mode`/`sim_dotbot_mrta.py` are not (see why there).
+> Per-folder documentation rule (see "Rules and invariants" below): any folder that grows its own
+> `AGENT.md` gets read before you work
 > inside it — this file does not repeat folder-local guides.
 
 ## What this project is
@@ -13,49 +14,65 @@
 external repo `MAPF_Simulation`, owning the algorithm (grid, agents, PIBT, task allocation) and
 exposed as a Python API the root-level scripts here consumed and wired to whatever DotBot
 environment is actually available — the DotBot simulator today, real hardware over LH2/MQTT
-tomorrow. `simulation/` has been **removed** (see "Current known inconsistencies"); reconnecting
-to the real upstream engine is deliberately deferred, not attempted blind — see `Roadmap.md` §0
-for why the previous reconnection plan was itself wrong and what re-scoping it needs. The DotBot
-side (`pydotbot`, the controller, the hardware stack) is **under active restructuring** and
-evolves independently of this engine question; treat this bridge layer as a moving target, not a
-settled one, and re-verify against the code rather than trusting a stale description — including
-this one.
+tomorrow. `simulation/` was **removed**, and `mrta_mode/`/`sim_dotbot_mrta.py` have since been
+**reconnected** to the real upstream engine (see "Current known inconsistencies" for exactly what
+still isn't); the other L0/L1/L2 scripts have not. The DotBot side (`pydotbot`, the controller, the
+hardware stack) is **under active restructuring** and evolves independently of this engine
+question; treat this bridge layer as a moving target, not a settled one, and re-verify against the
+code rather than trusting a stale description — including this one. (This file did exactly that
+wrong once already, same day: an "engine reconnection is deliberately deferred" claim here briefly
+described a fact-check against a stale second clone of `MAPF_Simulation` as if it were the real
+one — see `Roadmap.md` §0's own account of that mistake before trusting any claim about the
+upstream engine's shape without re-deriving it from the actual clone in use.)
 
-Three levels, pure algorithm to real hardware — **all three currently broken**, see below:
+Three levels, pure algorithm to real hardware:
 
-- **L0** — pure Python, no hardware: `sim_pibt.py`, `sim_many_pibt.py`.
+- **L0** — pure Python, no hardware: `sim_pibt.py`, `sim_many_pibt.py`. **Broken.**
 - **L1** — drives the DotBot **simulator** through its REST controller API: `sim_dotbot_pibt.py`
-  (fixed-goal batch run), `sim_dotbot_mrta.py` (persistent, operator-driven via clicks in the
-  existing web UI).
+  (fixed-goal batch run, **broken**), `sim_dotbot_mrta.py` (persistent, operator-driven via clicks
+  in the existing web UI, **reconnected**).
 - **L2** — drives **real** DotBots over LH2/MQTT: `real_dotbot_pibt.py`,
-  `real_dotbot_pibt_batch.py`.
+  `real_dotbot_pibt_batch.py`. **Broken.**
 
-Multi-Robot Task Allocation (online task stream + dynamic priority, on top of one-shot PIBT) was
-implemented in the now-removed `simulation/mrta/`. The design roadmap that preceded that
-implementation (`RoadmapMRTA.md`) was removed once the code existed; if you need the original
+Multi-Robot Task Allocation is now `pibt.LifelongGoalOrchestrator` (from the `mapf-simulation`
+package, see below) — the online-task-stream/dynamic-priority `FleetManager`/`Task`/
+`QueueTaskSource`/`EasiestAllocator` model that used to live in the now-removed
+`simulation/mrta/` has no equivalent any more and was not ported: `LifelongGoalOrchestrator` is a
+different, simpler design (one mutable target slot per agent, no queue, no cross-agent
+eligibility — see `mrta_mode/mrta_session.py`'s `_advance_chain()` for what MRTASession now owns
+locally to still support multi-hop waypoint chains). The design roadmap that preceded the removed
+implementation (`RoadmapMRTA.md`) was deleted once that code existed; if you need the original
 rationale, it is in git history (`git log --all --full-history -- RoadmapMRTA.md`).
 
 ## Current known inconsistencies
 
-**Every root-level L0/L1/L2 script and `mrta_mode/` is broken, as of 2026-08-27.** `simulation/`
-was removed (commit `d4e053b`) without a replacement: reconnecting to the real upstream
-`MAPF_Simulation` engine is deliberate future work (`Roadmap.md` §0), not done yet. Concretely,
-every one of these fails at import time (`sys.path.insert(..., "simulation")` then
-`from algo import PIBTCoordinator`, or the `mrta_mode` equivalent):
+**`sim_pibt.py`, `sim_many_pibt.py`, `sim_dotbot_pibt.py`, `real_dotbot_pibt.py`,
+`real_dotbot_pibt_batch.py`, `sim_dotbot_right_left.py` are still broken, as of 2026-08-27.** They
+import `algo`/`mrta` off a `sys.path.insert(..., "simulation")` that no longer resolves to
+anything — `simulation/` was removed (commit `d4e053b`) and these six scripts were not ported to
+the real upstream engine (`mrta_mode`/`sim_dotbot_mrta.py` were, see below). Porting them means
+replacing `algo.PIBTCoordinator`/`core.Simulation`/`core.Grid`/`core.Position` with
+`pibt.PIBTPlanner`/`core.WorldEngine`/`core.Grid2D`/`core.Coordinates2D` — same shape as the
+`mrta_mode` port, not yet done for these six.
 
-- `sim_pibt.py`, `sim_many_pibt.py`, `sim_dotbot_pibt.py`, `real_dotbot_pibt.py`,
-  `real_dotbot_pibt_batch.py`, `sim_dotbot_right_left.py` — import `algo`/`mrta` off a
-  `sys.path` entry that no longer resolves to anything.
-- `mrta_mode/__init__.py` and `mrta_mode/mrta_session.py` — same import, plus
-  `mrta_mode/mrta_session.py` builds a `mrta.FleetManager` + `mrta.QueueTaskSource` +
-  `algo.EasiestAllocator` dispatcher that has no package to come from.
-- `sim_dotbot_mrta.py` — broken transitively through `mrta_mode`.
+**`mrta_mode/` and `sim_dotbot_mrta.py` are reconnected**, to the `mapf-simulation` package
+(`core` + `pibt`, pip-installed as a git dependency from
+`git+https://github.com/RasdaCorentin/MAPF_Simulation.git@develop` — see `requirements.txt`), not
+to the removed `simulation/`. `mrta_mode/mrta_session.py`'s `MRTASession` now owns a
+`core.WorldEngine` wired to `pibt.PIBTPlanner` + `pibt.LifelongGoalOrchestrator` instead of the old
+`core.Simulation` + `mrta.FleetManager` + `mrta.QueueTaskSource` + `algo.EasiestAllocator`; see
+`diagrammes/sim_dotbot_mrta_ws_target_class_diagram.puml` for the validated design and
+`Roadmap.md` §0 for the full account, including the stale-clone mistake this correction follows.
+**Not yet verified to actually run**: `mapf-simulation`'s pip install was still in progress on the
+upstream side as of this port, so this has been checked by reading the real `core`/`pibt` source
+(constructors, `AGENT.md` guides, `demo_lifelong.py`'s usage pattern) and syntax-compiled, but not
+executed end-to-end against a running DotBot simulator yet. Also not carried over on purpose:
+Button.md's fix C.3 (an empty waypoint list — the operator's "Stop nav" — should cancel the
+agent's target, not be ignored) is still unapplied; the new engine makes that fix trivial
+(`orchestrator.set_target(agent_id, agent.position)`) but it is still a separate, undone change.
 
-None of this is a regression to silently patch around: don't re-vendor a copy of the engine to
-make these importable again without reading `Roadmap.md` §0 first — the whole point of removing
-`simulation/` was to stop maintaining a second, drifting copy of an engine that already exists
-upstream. *(If this section goes stale — scripts fixed, or newly broken some other way — update it
-in the same commit that changes the fact: an agent map that lies is worse than no map.)*
+*(If this section goes stale — scripts fixed, or newly broken some other way — update it in the
+same commit that changes the fact: an agent map that lies is worse than no map.)*
 
 ## Layout
 
@@ -65,7 +82,7 @@ in the same commit that changes the fact: an agent map that lies is worse than n
 ├── CLAUDE.md                   — pointer that imports AGENT.md
 ├── CONVENTION.md                — git/branch/commit/issue conventions (repo-wide)
 ├── README.md                    — human-facing overview, install, script reference
-├── requirements.txt             — pydotbot[calibrate], requests, pygame, scipy, websockets
+├── requirements.txt             — pydotbot[calibrate], requests, pygame, websockets, mapf-simulation
 ├── dotbot.toml                  — pydotbot CLI config (MQTT broker, swarm id)
 ├── mosquitto.conf               — local MQTT broker config for L2
 ├── mkdocs.yml                   — config for the docs/ site
@@ -73,34 +90,35 @@ in the same commit that changes the fact: an agent map that lies is worse than n
 ├── simulator_init_state_8x8.toml— L1 simulator seed, 8x8 grid (250 mm cells)
 ├── docs/                        — MkDocs site: level-0/1/2 guides, installation, contributing, inria/
 ├── mrta_mode/                   — classes behind sim_dotbot_mrta.py's MRTA mode (see below;
-│                                   one concrete class or DTO per file; currently broken, see above)
+│                                   one concrete class or DTO per file; reconnected, see above)
 ├── log/                         — experiment outputs (raw_logs/, *_per_run.csv, *_summary.csv)
 ├── sim_pibt.py                  — L0 interactive PIBT viewer (broken, see above)
 ├── sim_many_pibt.py             — L0 headless benchmark sweep (broken, see above)
 ├── sim_dotbot_pibt.py           — L1: drives the DotBot simulator (fixed-goal batch run, broken)
-├── sim_dotbot_mrta.py           — L1: persistent, click-to-target via the web UI (see below, broken)
+├── sim_dotbot_mrta.py           — L1: persistent, click-to-target via the web UI (see below, reconnected)
 ├── real_dotbot_pibt.py          — L2: drives real DotBots (broken, see above)
 ├── real_dotbot_pibt_batch.py    — L2: batch harness (N bots x M runs, broken)
 └── run_metrics.py               — CSV metrics helper for the L2 batch harness
 ```
 
 Before the `simulation/` removal, that package was added to `sys.path` by each top-level script at
-import time (`sys.path.insert(0, ".../simulation")`, still present in the code, now resolving to
-nothing) — no install needed, no package boundary to cross other than the Python import itself.
-`mrta_mode/` was the one exception: it added `simulation/` to `sys.path` once, in its own
-`__init__.py`, rather than requiring `sim_dotbot_mrta.py` to repeat the `sys.path.insert()` dance.
-Whatever replaces this (path insert against a local `MAPF_Simulation` clone, an editable install,
-a submodule) is an open question — see `Roadmap.md` §0.
+import time (`sys.path.insert(0, ".../simulation")`) — no install needed, no package boundary to
+cross other than the Python import itself. The six still-broken scripts listed above still have
+that `sys.path.insert()` call, now resolving to nothing. `mrta_mode/` used to be the one exception
+(it added `simulation/` to `sys.path` once, in its own `__init__.py`, rather than requiring
+`sim_dotbot_mrta.py` to repeat the dance) — since reconnection, it has no `sys.path` manipulation
+at all: `core`/`pibt` come from the pip-installed `mapf-simulation` package (`requirements.txt`),
+a real install rather than a path trick. The six broken scripts have not been ported to this same
+pattern yet — see "Current known inconsistencies".
 
 ## The bridge pattern (L1/L2 scripts)
 
-Describes the still-current *shape* of these scripts — the classes and control flow below are
-unchanged in the source — even though every one of them currently fails at import (see "Current
-known inconsistencies"). This is the pattern to preserve once reconnection makes them importable
-again, not a description of something that runs today.
-
-`sim_dotbot_pibt.py`, `real_dotbot_pibt.py` and `real_dotbot_pibt_batch.py` all share the same
-three-part shape — this is the pattern to preserve when migrating or extending them:
+Describes the still-current *shape* of `sim_dotbot_pibt.py`, `real_dotbot_pibt.py` and
+`real_dotbot_pibt_batch.py` — the classes and control flow below are unchanged in the source —
+even though all three currently fail at import (see "Current known inconsistencies"; unlike
+`sim_dotbot_mrta.py`, they have not been reconnected to the real engine yet). All three share the
+same three-part shape — this is the pattern to preserve once reconnection makes them importable
+again:
 
 1. **`GridStateManager`** — fetches bot state from `GET /controller/dotbots`, converts mm ↔ grid
    cell, resolves collisions when two bots land on the same cell (nudges one to a free
@@ -118,7 +136,8 @@ three-part shape — this is the pattern to preserve when migrating or extending
   after each step, since real hardware drifts from the plan), records `RunMetrics`, writes CSVs
   via `run_metrics.py`.
 
-### `sim_dotbot_mrta.py` — a different pattern (2026-07-23, split into `mrta_mode/` 2026-08-26)
+### `sim_dotbot_mrta.py` — a different pattern (2026-07-23, split into `mrta_mode/` 2026-08-26,
+reconnected to the real upstream engine 2026-08-27)
 
 Not a fixed-goal batch run: it starts every bot **parked** (no goals) and runs **indefinitely**
 (Ctrl+C to stop), waiting for an operator to drive it. `sim_dotbot_mrta.py` itself is now a thin
@@ -155,24 +174,30 @@ collaborators live in `mrta_mode/`, one concrete class or DTO per file:
   the controller's side; commanding a bot to move always requires this `PUT` regardless of how
   arrival is detected — `ControllerStatusListener` cannot replace it, only `wait_until_all_arrived`
   moved off this class.
-- **`MRTASession`** (`mrta_mode/mrta_session.py`) — the "activatable mode" object: owns the
-  `Simulation` + `mrta.FleetManager` + `mrta.QueueTaskSource` + `algo.EasiestAllocator` dispatcher
-  (`MRTASession.connect()` replaces the old `build_mrta()`), and exposes
-  `start()`/`stop()`/`handle_click()`/`tick()` so a caller other than a blocking CLI while-loop —
-  a future frontend — can drive it one step at a time; `run()` wraps `tick()` in the Ctrl+C
-  while-loop for standalone CLI use. Drops the pipelining `run_pibt_live()` does (a manual click
-  can land mid-travel and must be reflected in the very next `sim.step()`, so pre-computing ahead
-  would either miss it or be thrown away — `tick()` always does the plainer step → send → wait,
-  like `real_dotbot_pibt.py`).
+- **`MRTASession`** (`mrta_mode/mrta_session.py`) — the "activatable mode" object: owns a
+  `core.WorldEngine` wired to `pibt.PIBTPlanner` + `pibt.LifelongGoalOrchestrator`
+  (`MRTASession.connect()` replaces the old `build_mrta()`; as of 2026-08-27 this replaced the
+  earlier `core.Simulation` + `mrta.FleetManager` + `mrta.QueueTaskSource` +
+  `algo.EasiestAllocator` design — see `diagrammes/sim_dotbot_mrta_ws_target_class_diagram.puml`),
+  and exposes `start()`/`stop()`/`handle_click()`/`tick()` so a caller other than a blocking CLI
+  while-loop — a future frontend — can drive it one step at a time; `run()` wraps `tick()` in the
+  Ctrl+C while-loop for standalone CLI use. Drops the pipelining `run_pibt_live()` does (a manual
+  click can land mid-travel and must be reflected in the very next `advance_time_step()`, so
+  pre-computing ahead would either miss it or be thrown away — `tick()` always does the plainer
+  step → send → wait, like `real_dotbot_pibt.py`). Also owns a per-agent `_pending_chain` queue
+  (a `deque[Coordinates2D]`) that `LifelongGoalOrchestrator` itself has no equivalent for: it
+  holds one mutable target slot per agent, not a queue, so a multi-hop waypoint click's cells
+  beyond the first are popped into `set_target()` one at a time as the agent arrives at each.
 
 **The click path has no PyDotBot-side changes.** The operator uses the existing, unmodified web
 UI exactly as it already works today: select a bot, click a map point, "Apply waypoints" — a
-normal `PUT .../waypoints`. `MRTASession.handle_click()` converts the waypoint's target cell into
-an `mrta.Task` restricted to that one bot (`eligible=frozenset({agent_id})`), and lets PIBT
-navigate it there while avoiding every other bot being driven the same way. A re-click on a bot
-already mid-route overrides the in-flight task rather than queuing behind it — matching the fact
-that the browser's own PUT already overwrites the bot's waypoint list unconditionally the instant
-it lands.
+normal `PUT .../waypoints`. `MRTASession.handle_click()` calls
+`orchestrator.set_target(agent_id, cell)` for that one bot, and lets PIBT navigate it there while
+avoiding every other bot being driven the same way — eligibility is not a separate concept to
+implement here, `set_target()` already takes an explicit `agent_id`. A re-click on a bot already
+mid-route overrides the in-flight target rather than queuing behind it (`set_target()`'s own
+contract: it always overwrites) — matching the fact that the browser's own PUT already overwrites
+the bot's waypoint list unconditionally the instant it lands.
 
 **Cross-repo dependency**: the WS message shapes this script parses
 (`{"cmd": 2, "data": {"address": ..., "lh2_waypoints": [...]}}` and
