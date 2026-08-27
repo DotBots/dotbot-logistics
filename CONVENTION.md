@@ -9,10 +9,11 @@ branches, issues, and this document.
 
 Folder and file names are in English.
 
-`dotbot-logistics` is the bridge between the `simulation/` engine and the DotBot environment
-(simulator today, real hardware over LH2/MQTT). This tree is the root repo's own layout — for
-`simulation/`'s internal structure (`core/`, `algo/`, `mrta/`, `client/`, `report/`), see
-[`simulation/CONVENTION.md`](simulation/CONVENTION.md); the two are not the same tree.
+`dotbot-logistics` is the bridge between a PIBT/MRTA engine and the DotBot environment (simulator
+today, real hardware over LH2/MQTT). The engine used to be vendored at `simulation/`; that copy
+was removed (2026-08-27, see `AGENT.md`'s "Current known inconsistencies") and every bridge
+script is currently broken as a result — reconnecting to the real upstream engine is deliberately
+deferred, see `Roadmap.md` §0.
 
 ```
 .
@@ -29,7 +30,6 @@ Folder and file names are in English.
 ├── CLAUDE.md                     — pointer that imports AGENT.md
 ├── CONVENTION.md                 — this file
 ├── docs/                         — MkDocs site: level-0/1/2 guides, installation, contributing
-├── simulation/                   — PIBT/MRTA engine (own CLAUDE.md/AGENT.md/CONVENTION.md)
 ├── log/                          — experiment outputs (raw_logs/, *_per_run.csv, *_summary.csv)
 ├── sim_pibt.py                   — L0 interactive PIBT viewer
 ├── sim_many_pibt.py              — L0 headless benchmark sweep

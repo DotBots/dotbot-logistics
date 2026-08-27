@@ -1,69 +1,61 @@
 # AGENT.md
 
 > Project map for coding agents working in `dotbot-logistics`. Read this before touching any
-> root-level script. Per-folder documentation rule (see "Rules and invariants" below): `simulation/`
-> is its own sub-project with its own `CLAUDE.md`/`AGENT.md`/`CONVENTION.md` — read those when you
-> cross into `simulation/`, and likewise for any other folder that grows its own `AGENT.md`
-> (e.g. `simulation/mrta/AGENT.md`). This file does not repeat folder-local guides.
+> root-level script, and read the "Current known inconsistencies" section below first — every
+> L0/L1/L2 script is currently broken (see why there). Per-folder documentation rule (see "Rules
+> and invariants" below): any folder that grows its own `AGENT.md` gets read before you work
+> inside it — this file does not repeat folder-local guides.
 
 ## What this project is
 
-`dotbot-logistics` is the **bridge** between the `simulation/` PIBT/MRTA engine and the DotBot
-environment. `simulation/` owns the algorithm (grid, agents, PIBT, task allocation) and exposes it
-as a Python API; the root-level scripts in this repo consume that API and wire it to whatever
-DotBot environment is actually available — the DotBot simulator today, real hardware over
-LH2/MQTT tomorrow — adapting the connection layer to each target. The DotBot side (`pydotbot`,
-the controller, the hardware stack) is **under active restructuring** and evolves independently
-of `simulation/`; treat this bridge layer as a moving target, not a settled one, and re-verify
-against the code rather than trusting a stale description — including this one.
+`dotbot-logistics` is the **bridge** between a PIBT/MRTA engine and the DotBot environment. Until
+2026-08-27 that engine was vendored at `simulation/` — a drifted, git-history-only snapshot of the
+external repo `MAPF_Simulation`, owning the algorithm (grid, agents, PIBT, task allocation) and
+exposed as a Python API the root-level scripts here consumed and wired to whatever DotBot
+environment is actually available — the DotBot simulator today, real hardware over LH2/MQTT
+tomorrow. `simulation/` has been **removed** (see "Current known inconsistencies"); reconnecting
+to the real upstream engine is deliberately deferred, not attempted blind — see `Roadmap.md` §0
+for why the previous reconnection plan was itself wrong and what re-scoping it needs. The DotBot
+side (`pydotbot`, the controller, the hardware stack) is **under active restructuring** and
+evolves independently of this engine question; treat this bridge layer as a moving target, not a
+settled one, and re-verify against the code rather than trusting a stale description — including
+this one.
 
-Three levels, pure algorithm to real hardware:
+Three levels, pure algorithm to real hardware — **all three currently broken**, see below:
 
-- **L0** — pure Python, no hardware: `sim_pibt.py`, `sim_many_pibt.py`, the whole `simulation/`
-  package.
+- **L0** — pure Python, no hardware: `sim_pibt.py`, `sim_many_pibt.py`.
 - **L1** — drives the DotBot **simulator** through its REST controller API: `sim_dotbot_pibt.py`
   (fixed-goal batch run), `sim_dotbot_mrta.py` (persistent, operator-driven via clicks in the
   existing web UI).
 - **L2** — drives **real** DotBots over LH2/MQTT: `real_dotbot_pibt.py`,
   `real_dotbot_pibt_batch.py`.
 
-Multi-Robot Task Allocation (online task stream + dynamic priority, on top of one-shot PIBT) is
-implemented in `simulation/mrta/` — read `simulation/mrta/AGENT.md` before touching goal/priority
-assignment. The design roadmap that preceded the implementation (`RoadmapMRTA.md`) has been
-removed now that the code is the source of truth; if you need the original rationale, it is in
-git history (`git log --all --full-history -- RoadmapMRTA.md`).
+Multi-Robot Task Allocation (online task stream + dynamic priority, on top of one-shot PIBT) was
+implemented in the now-removed `simulation/mrta/`. The design roadmap that preceded that
+implementation (`RoadmapMRTA.md`) was removed once the code existed; if you need the original
+rationale, it is in git history (`git log --all --full-history -- RoadmapMRTA.md`).
 
-## Bridge-scripts migration history (2026-07-23)
+## Current known inconsistencies
 
-`simulation/` was refactored: `core/` split into `entities/`/`environment/`/`engine/`,
-`Objective` removed in favour of `Zone`, `algo/pibt.py` replaced by
-`algo/coordination/pibt_coordinator.py`'s `PIBTCoordinator`, and goals/priorities are now
-injected per tick via a `DispatchIntent` instead of the old `PIBT(goals=..., initial_priorities=...)`
-constructor. All five root-level bridge scripts (`sim_pibt.py`, `sim_many_pibt.py`,
-`sim_dotbot_pibt.py`, `real_dotbot_pibt.py`, `real_dotbot_pibt_batch.py`) initially missed this
-and failed at import; all five have since been migrated onto `PIBTCoordinator` +
-`StaticDispatcher`, following the `simulation/demo_pibt.py` pattern — goals and priorities are
-now keyed by `agent_id` (int), not `Agent` objects. Two things worth knowing if you touch them
-again:
+**Every root-level L0/L1/L2 script and `mrta_mode/` is broken, as of 2026-08-27.** `simulation/`
+was removed (commit `d4e053b`) without a replacement: reconnecting to the real upstream
+`MAPF_Simulation` engine is deliberate future work (`Roadmap.md` §0), not done yet. Concretely,
+every one of these fails at import time (`sys.path.insert(..., "simulation")` then
+`from algo import PIBTCoordinator`, or the `mrta_mode` equivalent):
 
-- **`sim_pibt.py`'s old `Objective` obstacle** (a collectible, owner-able entity) was dropped
-  rather than replaced — that entity type has no post-refactor equivalent (`Zone` is never
-  collectible).
-- **`real_dotbot_pibt_batch.py`'s `resync_simulation()`** used to reach into
-  `sim.coordinator.priorities` (Agent-keyed) to un-stick an agent PIBT had demoted to `-inf`
-  after "reaching its goal", in case the LH2 resync showed it hadn't really arrived. That hack
-  was dropped, not migrated: `PIBTCoordinator` has no public `priorities` attribute, and doesn't
-  need the poke either — `plan()` re-checks `position == goal` at the start of every step and
-  restores the demoted base priority itself as soon as the state stops holding (the "`-inf`
-  demotion is reversible" invariant, `simulation/AGENT.md`).
+- `sim_pibt.py`, `sim_many_pibt.py`, `sim_dotbot_pibt.py`, `real_dotbot_pibt.py`,
+  `real_dotbot_pibt_batch.py`, `sim_dotbot_right_left.py` — import `algo`/`mrta` off a
+  `sys.path` entry that no longer resolves to anything.
+- `mrta_mode/__init__.py` and `mrta_mode/mrta_session.py` — same import, plus
+  `mrta_mode/mrta_session.py` builds a `mrta.FleetManager` + `mrta.QueueTaskSource` +
+  `algo.EasiestAllocator` dispatcher that has no package to come from.
+- `sim_dotbot_mrta.py` — broken transitively through `mrta_mode`.
 
-**Two `sim_many_pibt.py` still exist and are not interchangeable**: the root one (L0 sweep over
-grid × N × seed, writes `l0_results.csv`) and `simulation/sim_many_pibt.py` (same idea, own
-scope, writes `sim_results.csv`). Both now target the current engine — check which directory
-you're in before running or editing either.
-
-*(If `simulation/`'s engine changes again in a way that breaks these scripts, update this section
-in the same commit — an agent map that lies is worse than no map.)*
+None of this is a regression to silently patch around: don't re-vendor a copy of the engine to
+make these importable again without reading `Roadmap.md` §0 first — the whole point of removing
+`simulation/` was to stop maintaining a second, drifting copy of an engine that already exists
+upstream. *(If this section goes stale — scripts fixed, or newly broken some other way — update it
+in the same commit that changes the fact: an agent map that lies is worse than no map.)*
 
 ## Layout
 
@@ -80,26 +72,32 @@ in the same commit — an agent map that lies is worse than no map.)*
 ├── simulator_init_state.toml    — L1 simulator seed, 5x5 grid (400 mm cells)
 ├── simulator_init_state_8x8.toml— L1 simulator seed, 8x8 grid (250 mm cells)
 ├── docs/                        — MkDocs site: level-0/1/2 guides, installation, contributing, inria/
-├── simulation/                  — PIBT/MRTA engine, own CLAUDE.md/AGENT.md/CONVENTION.md
 ├── mrta_mode/                   — classes behind sim_dotbot_mrta.py's MRTA mode (see below;
-│                                   one concrete class or DTO per file)
+│                                   one concrete class or DTO per file; currently broken, see above)
 ├── log/                         — experiment outputs (raw_logs/, *_per_run.csv, *_summary.csv)
-├── sim_pibt.py                  — L0 interactive PIBT viewer
-├── sim_many_pibt.py             — L0 headless benchmark sweep
-├── sim_dotbot_pibt.py           — L1: drives the DotBot simulator (fixed-goal batch run)
-├── sim_dotbot_mrta.py           — L1: persistent, click-to-target via the web UI (see below)
-├── real_dotbot_pibt.py          — L2: drives real DotBots
-├── real_dotbot_pibt_batch.py    — L2: batch harness (N bots x M runs)
+├── sim_pibt.py                  — L0 interactive PIBT viewer (broken, see above)
+├── sim_many_pibt.py             — L0 headless benchmark sweep (broken, see above)
+├── sim_dotbot_pibt.py           — L1: drives the DotBot simulator (fixed-goal batch run, broken)
+├── sim_dotbot_mrta.py           — L1: persistent, click-to-target via the web UI (see below, broken)
+├── real_dotbot_pibt.py          — L2: drives real DotBots (broken, see above)
+├── real_dotbot_pibt_batch.py    — L2: batch harness (N bots x M runs, broken)
 └── run_metrics.py               — CSV metrics helper for the L2 batch harness
 ```
 
-`simulation/` is added to `sys.path` by each top-level script at import time — no install needed,
-no package boundary to cross other than the Python import itself. `mrta_mode/` is the one
-exception: it adds `simulation/` to `sys.path` once, in its own `__init__.py`, rather than
-requiring `sim_dotbot_mrta.py` to repeat the `sys.path.insert()` dance — importing `mrta_mode`
-from anywhere is enough.
+Before the `simulation/` removal, that package was added to `sys.path` by each top-level script at
+import time (`sys.path.insert(0, ".../simulation")`, still present in the code, now resolving to
+nothing) — no install needed, no package boundary to cross other than the Python import itself.
+`mrta_mode/` was the one exception: it added `simulation/` to `sys.path` once, in its own
+`__init__.py`, rather than requiring `sim_dotbot_mrta.py` to repeat the `sys.path.insert()` dance.
+Whatever replaces this (path insert against a local `MAPF_Simulation` clone, an editable install,
+a submodule) is an open question — see `Roadmap.md` §0.
 
 ## The bridge pattern (L1/L2 scripts)
+
+Describes the still-current *shape* of these scripts — the classes and control flow below are
+unchanged in the source — even though every one of them currently fails at import (see "Current
+known inconsistencies"). This is the pattern to preserve once reconnection makes them importable
+again, not a description of something that runs today.
 
 `sim_dotbot_pibt.py`, `real_dotbot_pibt.py` and `real_dotbot_pibt_batch.py` all share the same
 three-part shape — this is the pattern to preserve when migrating or extending them:
@@ -220,23 +218,20 @@ credentials go in env vars `DOTBOT_MQTT_USER` / `DOTBOT_MQTT_PASS`.
 
 ## Rules and invariants
 
-- **A folder with its own `AGENT.md` must have it read before working inside it.** Not just
-  `simulation/` as a special case — this is the general rule `simulation/`'s own layout already
-  follows one level down (`core/AGENT.md`, `algo/AGENT.md`, `mrta/AGENT.md`, `client/AGENT.md`,
-  `report/AGENT.md`, each read on demand only when touching that specific package — see
-  `simulation/AGENT.md`'s "Package guides" table). Any folder in this repo may grow its own
-  `AGENT.md` the same way; check for one (`ls <folder>/AGENT.md`) before making changes inside a
-  folder you have not worked in during this session, and do not assume this root file already
-  covers it — a folder-local guide holds the detail this one deliberately does not repeat.
+- **A folder with its own `AGENT.md` must have it read before working inside it.** Any folder in
+  this repo may grow its own `AGENT.md`; check for one (`ls <folder>/AGENT.md`) before making
+  changes inside a folder you have not worked in during this session, and do not assume this root
+  file already covers it — a folder-local guide holds the detail this one deliberately does not
+  repeat. (`simulation/`'s own multi-level version of this rule — `core/AGENT.md`, `algo/AGENT.md`,
+  `mrta/AGENT.md`, etc. — no longer applies now that `simulation/` is removed; it is the reference
+  example if that package (or its replacement) comes back.)
 - **1 action = 1 commit**: each logically distinct change (fix, migration, doc batch) is its own
   commit — see `CONVENTION.md`.
 - **No push without explicit user request** in the same message.
-- **Class-diagram-based development**: any change to `simulation/`'s engine must be shown and
-  validated through its class diagram (`simulation/diagrammes/_model.iuml`) — see
-  `simulation/AGENT.md` for the full rule and the regeneration commands.
-- **Dependency direction inside `simulation/`** (`core` never imports `client`/`algo`/`mrta`,
-  `algo` never imports `client`, etc.) is `simulation/`'s own contract — see
-  `simulation/AGENT.md`, not restated here.
+- **Class-diagram-based development**: any change to the PIBT/MRTA engine's design should be shown
+  and validated through a class diagram before code moves (the rule `simulation/AGENT.md` used to
+  state for its own package) — still the intended practice, just without a live target to point at
+  until reconnection is scoped; see `Roadmap.md` §0.
 - **The sync barrier (`wait_until_all_arrived`) is load-bearing**: it is what gives PIBT its
   collision-avoidance guarantee on async, real hardware. Removing it or racing ahead of it can
   make two bots collide — it is not an optimisation to cut for latency.

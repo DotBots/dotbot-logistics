@@ -6,24 +6,23 @@ collision-free multi-robot navigation on a discrete grid.
 📖 **Documentation:** a three-level reproduction guide (algorithm → simulator → real
 hardware) lives under [`docs/`](docs/index.md) and builds as a MkDocs site (`mkdocs serve`).
 
+> ⚠️ **Every script below is currently broken.** The vendored PIBT/MRTA engine
+> (`simulation/`) was removed on 2026-08-27; reconnecting to the real upstream engine is
+> deliberate future work, not done yet. See `AGENT.md`'s "Current known inconsistencies" and
+> `Roadmap.md` §0. None of the commands in this README will run until that lands.
+
 ## Contents
 
 | Path | Level | Description |
 |------|-------|-------------|
 | `sim_pibt.py` | 0 | Interactive pygame viewer — animates PIBT on a small grid (edit-in-file scenario). |
 | `sim_many_pibt.py` | 0 | Headless benchmark — PIBT sweep over grid resolution × N × seeds, writes a CSV. |
-| `simulation/` | 0 | Standalone PIBT/MRTA engine (`core/`, `algo/`, `mrta/`) + renderers. |
-| `simulation/main.py` | 0 | Minimal non-PIBT template (random-walk coordinator). |
 | `sim_dotbot_pibt.py` | 1 | Drives the DotBot **simulator** through the controller API (parallel + pipelined). |
 | `sim_dotbot_mrta.py` | 1 | Persistent — click a bot then a cell in the existing web UI, PIBT drives it there while others carry on. |
 | `real_dotbot_pibt.py` | 2 | Drives **real** DotBots, one waypoint per bot per step, sync barrier between steps. |
 | `real_dotbot_pibt_batch.py` | 2 | Parametrised batch test (`--bots N --runs M`) writing L1 metrics. |
 | `log/` | — | Experiment outputs — `raw_logs/` and metrics CSVs. |
 | `docs/` | — | Documentation — roadmap, experiment reports, Inria hand-offs. |
-
-### Simulation architecture
-
-![Class diagram](simulation/diagrammes/simulation_class_diagram.png)
 
 ## Installation
 
@@ -33,8 +32,9 @@ pip install -r requirements.txt
 
 `requirements.txt` pulls `pydotbot[calibrate]`, `requests`, `pygame` (only used by the Level 0
 viewer), `scipy` (only used by the still-stubbed `KDTreeGreedyAllocator`), and `websockets`
-(only used by `sim_dotbot_mrta.py`'s click-detection listener). The bundled `simulation/` engine
-is added to `sys.path` automatically by the scripts — no separate install needed.
+(only used by `sim_dotbot_mrta.py`'s click-detection listener). The PIBT/MRTA engine these scripts
+depend on (formerly bundled at `simulation/`) is not currently installable at all — see the
+warning at the top of this file.
 
 ---
 
@@ -59,9 +59,6 @@ python sim_pibt.py -d     # debug mode (hides the pygame support prompt)
 | `→` | step forward |
 | `←` | step back |
 | `Q` / `Esc` | quit |
-
-A minimal non-PIBT example (random-walk coordinator, a template for your own algorithm)
-lives in `simulation/main.py` (`python simulation/main.py`).
 
 #### `sim_many_pibt.py` — headless benchmark
 
