@@ -6,8 +6,8 @@ broadcasts (confirmed by reading PyDotBot's dotbot/server.py directly).
 Every message is a DotBotNotificationCommand; cmd=2 (UPDATE) carries *both*
 waypoint-set events (data.lh2_waypoints) and continuous LH2 position updates
 (data.lh2_position), the latter pushed on every advertisement frame the
-controller receives (PyDotBot controller.py:405-567, confirmed against the
-up-to-date repo at dotbot-workspace/repos/PyDotBot). This listener replaces
+controller receives (PyDotBot controller.py:405-567, confirmed against an
+up-to-date PyDotBot checkout). This listener replaces
 the old WaypointWatcher, which kept only the waypoints half and silently
 dropped the rest: it now dispatches waypoint events to a click queue
 (drained by MRTASession.tick()) and position events straight into a
