@@ -63,12 +63,19 @@ to the removed `simulation/`. `mrta_mode/mrta_session.py`'s `MRTASession` now ow
 `core.Simulation` + `mrta.FleetManager` + `mrta.QueueTaskSource` + `algo.EasiestAllocator`; see
 `diagrammes/sim_dotbot_mrta_ws_target_class_diagram.puml` for the validated design and
 `Roadmap.md` §0 for the full account, including the stale-clone mistake this correction follows.
-**Not yet verified to actually run**: `mapf-simulation`'s pip install was still in progress on the
-upstream side as of this port, so this has been checked by reading the real `core`/`pibt` source
-(constructors, `AGENT.md` guides, `demo_lifelong.py`'s usage pattern) and syntax-compiled, but not
-executed end-to-end against a running DotBot simulator yet. Also not carried over on purpose:
-Button.md's fix C.3 (an empty waypoint list — the operator's "Stop nav" — should cancel the
-agent's target, not be ignored) is still unapplied; the new engine makes that fix trivial
+**Verified end-to-end, 2026-08-27**: against a real `dotbot run simulator` (5×5 grid, 10 bots) and
+`sim_dotbot_mrta.py --dry-run` (connects, lists bots, builds the grid, no errors), then live — a
+`PUT .../waypoints` click on one bot was detected over the WS status channel, translated to a
+target cell, driven through `orchestrator.set_target()` → `WorldEngine.advance_time_step()` →
+`PIBTPlanner`, and the bot walked the Manhattan path to the target one cell per tick, waiting for
+real arrival at each step before continuing. `mapf-simulation` itself is still not installed
+anywhere in this project's own environment — this run borrowed `core`/`pibt` via `PYTHONPATH`
+against the `~/3A/projets/MAPF_Simulation` checkout directly, and pydotbot from an unrelated
+project's venv (`dotbot-workspace/.venv`) rather than a `dotbot-logistics`-local one, which still
+does not exist. A durable local install (this project's own venv, `pip install -r
+requirements.txt`) is still open work. Also not carried over on purpose: Button.md's fix C.3 (an
+empty waypoint list — the operator's "Stop nav" — should cancel the agent's target, not be
+ignored) is still unapplied; the new engine makes that fix trivial
 (`orchestrator.set_target(agent_id, agent.position)`) but it is still a separate, undone change.
 
 *(If this section goes stale — scripts fixed, or newly broken some other way — update it in the
