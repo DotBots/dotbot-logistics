@@ -32,27 +32,37 @@ pip install -r requirements.txt
   (see that repo's own `README.md`/`AGENT.md` for what each package exposes)
 - `requests`, `websockets` — the controller REST client and the WS click/position listener
 
-### 2. The `/mrta/*` proxy (only to drive it from the console)
+### 2. A PyDotBot environment on the `feat/mrta-mode-toggle` branch
 
 `mrta_server.py` is reached by the DotBot web console's "MRTA" pill through a `/mrta/*` proxy
-that currently exists only on PyDotBot's `feat/mrta-mode-toggle` branch. Replace the released
-`pydotbot` in the venv with that editable checkout:
+that currently exists only on PyDotBot's `feat/mrta-mode-toggle` branch. So a working PyDotBot
+is a **prerequisite**, and it has to be that branch. Replace the released `pydotbot` in the venv
+with an editable checkout of it:
 
 ```bash
-pip install -e ../dotbot-workspace/repos/PyDotBot   # branch feat/mrta-mode-toggle
+git clone https://github.com/DotBots/PyDotBot.git
+git -C PyDotBot checkout feat/mrta-mode-toggle
+pip install -e PyDotBot
 ```
 
-Skip this if you only want the `--dry-run` wiring check, or if you are reusing `mrta_mode/` as a
-library — the proxy is a console-integration convenience, not a dependency of the engine.
+Already have a PyDotBot checkout? `git checkout feat/mrta-mode-toggle` in it and `pip install -e`
+that path. For a full DotBot testbed rather than PyDotBot alone, follow
+[`DotBots/dotbot-workspace`](https://github.com/DotBots/dotbot-workspace) — an agent-first setup
+(`/workspace-setup`) that clones every DotBot repo into one shared venv with editable installs;
+check `feat/mrta-mode-toggle` out in its `PyDotBot` and add this repo's `requirements.txt` to
+that venv.
+
+Skip this step if you only want the `--dry-run` wiring check, or if you are reusing `mrta_mode/`
+as a library — the proxy is a console-integration convenience, not a dependency of the engine.
 
 ### 3. Run the smoke test
 
 ```bash
-# terminal 1 — simulated swarm. Needs a seed TOML with >= 2 bots; the PyDotBot checkout ships
-#              one at ../dotbot-workspace/repos/PyDotBot/simulator_init_state.toml. The proxy
-#              target is set with --mrta-url (or [run.controller] mrta_url, or DOTBOT_MRTA_URL).
+# terminal 1 — simulated swarm. Needs a seed TOML with >= 2 bots; PyDotBot ships a sample as
+#              simulator_init_state.toml at the root of its checkout, or write your own. The
+#              proxy target is set with --mrta-url (or [run.controller] mrta_url, or DOTBOT_MRTA_URL).
 dotbot run simulator --map-size 2000x2000 \
-    --simulator-init-state ../dotbot-workspace/repos/PyDotBot/simulator_init_state.toml \
+    --simulator-init-state path/to/simulator_init_state.toml \
     --mrta-url http://localhost:8002
 
 # terminal 2
@@ -144,16 +154,15 @@ see `diagrammes/sim_dotbot_mrta_ws_target_class_diagram.puml` for the validated 
 over the WS status channel, translated to a target cell, driven through
 `orchestrator.set_target()` → `WorldEngine.advance_time_step()` → `PIBTPlanner`, and the bot
 walked the Manhattan path to the target one cell per tick, waiting for real arrival at each step.
-That run predated the local venv: it borrowed `core`/`pibt` via `PYTHONPATH` against
-`~/3A/projets/MAPF_Simulation` and pydotbot from `dotbot-workspace/.venv`.
+That run predated this repo's own venv: it borrowed `core`/`pibt` and `pydotbot` from separate
+local checkouts via `PYTHONPATH`.
 
 **The project-local venv now exists (2026-08-27).** `python3.12 -m venv venv && ./venv/bin/pip
 install -r requirements.txt` — `mapf-simulation` builds and installs from its git URL (provides
 `core`/`pibt`), alongside `pydotbot`, `fastapi`/`uvicorn`, `websockets`, `requests`. On top of
-that, `./venv/bin/pip install -e ../dotbot-workspace/repos/PyDotBot` replaces the released
-`pydotbot` with the editable local checkout (branch `feat/mrta-mode-toggle`) so the same venv also
-carries the `/mrta/*` proxy. `venv/` is gitignored. `./venv/bin/python mrta_server.py` runs with
-no `PYTHONPATH` trick.
+that, `./venv/bin/pip install -e <path-to-PyDotBot>` (branch `feat/mrta-mode-toggle`) replaces the
+released `pydotbot` with an editable checkout so the same venv also carries the `/mrta/*` proxy.
+`venv/` is gitignored. `./venv/bin/python mrta_server.py` runs with no `PYTHONPATH` trick.
 
 **The MRTA mode button is now wired end to end (2026-08-27), not yet verified live.** All of
 the "MRTA mode toggle" section's A/B/C/D shipped: the 3 restartability fixes (C.1 `ControllerStatusListener.stop()`
@@ -162,8 +171,8 @@ interruptible; C.3 an empty waypoint list cancels the agent's target via
 `orchestrator.set_target(agent_id, agent.position)`), the HTTP server (`mrta_mode/server.py`'s
 `MrtaMode` state machine + `mrta_server.py` CLI), the OFF sequence (D — `MRTASession.halt_all()` +
 `WaypointCommandClient.send_stop()`, run in the stop-flag → wake-wait → join → PUT-[] order), and
-the PyDotBot `/mrta/*` proxy (in the `dotbot-workspace/repos/PyDotBot` checkout, branch
-`feat/mrta-mode-toggle`, commit "dotbot: proxy /mrta/* to the MRTA mode server"). Design:
+the PyDotBot `/mrta/*` proxy (on PyDotBot's `feat/mrta-mode-toggle` branch, commit
+"dotbot: proxy /mrta/* to the MRTA mode server"). Design:
 `diagrammes/mrta_mode_button_architecture.puml` + `diagrammes/mrta_mode_button_state_machine.puml`.
 Checked so far (in the new `venv/`): unit-level state-machine walk (off → connecting →
 409-on-double-POST → off on connect failure), the proxy returning 502→"MRTA N/A" when nothing is
@@ -257,8 +266,8 @@ per `diagrammes/sim_dotbot_mrta_ws_target_class_diagram.puml`:
   matters and PyDotBot has moved on since). Every message is a `DotBotNotificationCommand`;
   `cmd=2` (`UPDATE`) carries *both* waypoint-set events (`data.lh2_waypoints`) and continuous LH2
   position updates (`data.lh2_position`, pushed on every advertisement frame the controller
-  receives — `dotbot/controller.py:405-567` in the up-to-date PyDotBot checkout at
-  `dotbot-workspace/repos/PyDotBot`). The old `WaypointWatcher` kept only the waypoints half and
+  receives — `dotbot/controller.py:405-567` in an up-to-date PyDotBot checkout). The old
+  `WaypointWatcher` kept only the waypoints half and
   silently dropped the rest; `ControllerStatusListener` dispatches both — waypoint events to a
   click queue drained by `MRTASession.tick()`, position events straight into `LivePositionStore`.
 - **`LivePositionStore`** (`mrta_mode/live_position_store.py`, new) — the arrival source. Where
@@ -305,9 +314,8 @@ the bot's waypoint list unconditionally the instant it lands.
 **Cross-repo dependency**: the WS message shapes this script parses
 (`{"cmd": 2, "data": {"address": ..., "lh2_waypoints": [...]}}` and
 `{"cmd": 2, "data": {"address": ..., "lh2_position": {"x": ..., "y": ...}}}`) are owned by
-`DotBots/PyDotBot` (a separate repo, checked out locally at `dotbot-workspace/repos/PyDotBot`, not
-versioned here) — if that project changes its notification schema,
-`ControllerStatusListener._handle_raw()` is what needs updating.
+`DotBots/PyDotBot` (a separate repo, not versioned here) — if that project changes its
+notification schema, `ControllerStatusListener._handle_raw()` is what needs updating.
 
 ### Grid ↔ mm mapping
 
@@ -383,7 +391,7 @@ consoles on one testbed must agree, and closing one must change nothing.
 - **A — the `/mrta/*` proxy in PyDotBot.** `mrta_url` (default `http://localhost:8002`,
   `--mrta-url` / `[run.controller] mrta_url` / `DOTBOT_MRTA_URL`) threaded through the controller;
   `mrta_proxy` in `dotbot/server.py` mirrors the existing `swarmit_proxy` minus the SSE/streaming
-  machinery. In the `dotbot-workspace/repos/PyDotBot` checkout, branch `feat/mrta-mode-toggle`.
+  machinery. On PyDotBot's `feat/mrta-mode-toggle` branch.
   This breaks the "no changes to the PyDotBot controller" invariant the CLI held — the smallest
   possible break: the controller learns one URL, nothing about MRTA.
 - **B — the MRTA HTTP server, here.** `mrta_mode/server.py`: `MrtaMode` owns the state machine +
