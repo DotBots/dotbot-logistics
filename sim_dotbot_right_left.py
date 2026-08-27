@@ -1,15 +1,26 @@
 #!/usr/bin/env python3
 """
-sim_dotbot_pibt.py — Simulator version, step-by-step synchronised execution.
+sim_dotbot_right_left.py — Simulator demo: all bots to the right edge, then all to the left.
 
-Computes PIBT trajectories and executes them step by step: at each step, one
-waypoint per bot (its next cell), then waits for ALL bots to arrive before the
-next step (synchronisation barrier). Reflects real hardware behaviour.
+Two MRTA phases, run back to back:
+  1. one Task per rightmost cell is pushed with `eligible=None` (any free
+     agent may take it) — a *mutual* objective for the fleet: the only
+     condition is that every target cell ends up occupied, not which bot
+     ends up on which. FleetManager + EasiestAllocator assign each task to
+     whichever free bot is nearest it, so bots don't fight over a cell
+     pre-assigned by a naive row/column sort;
+  2. once every task has resolved (DONE, or FAILED past its retry budget),
+     wait `--wait` seconds (default 5s);
+  3. same, with cells packed against the left edge.
 
-Optimisations:
-  1. Parallel waypoint dispatch via ThreadPoolExecutor
-  2. Next-step pre-computation overlapped with bot travel
-  4. Adaptive polling: starts at 50 ms, backs off up to 500 ms
+This mirrors sim_dotbot_mrta.py's build_mrta() (FleetManager + QueueTaskSource
++ EasiestAllocator as the Simulation's dispatcher) rather than
+sim_dotbot_pibt.py's StaticDispatcher: a *fixed per-agent* goal is exactly the
+assignment that was causing bots to struggle into position, since it forces a
+specific bot onto a specific cell even when another bot is a much shorter,
+uncontested path away. GridStateManager / send_waypoints /
+wait_until_all_arrived are duplicated from the other bridge scripts rather
+than imported, matching this repo's existing convention (see AGENT.md).
 
 Prerequisites:
     dotbot run simulator \\
@@ -17,11 +28,10 @@ Prerequisites:
         --simulator-init-state simulator_init_state.toml
 
 Usage:
-    python sim_dotbot_pibt.py              # step-by-step synchronised execution
-    python sim_dotbot_pibt.py --dry-run    # print targets without sending
-    python sim_dotbot_pibt.py --steps 40   # number of PIBT steps (default: 30)
-    python sim_dotbot_pibt.py --map-cells 5  # 5x5 grid on 2000x2000 (default, 400 mm cells)
-    python sim_dotbot_pibt.py --map-cells 8  # 8x8 grid on 2000x2000 (250 mm cells)
+    python sim_dotbot_right_left.py                # right, wait 5s, left
+    python sim_dotbot_right_left.py --dry-run       # print targets without sending
+    python sim_dotbot_right_left.py --wait 10       # wait 10s between right and left
+    python sim_dotbot_right_left.py --map-cells 8   # 8x8 grid on 2000x2000 (250 mm cells)
 
 Grid <-> mm mapping:
     cell (gx, gy) -> centre mm = (gx*cell_mm + cell_mm//2, gy*cell_mm + cell_mm//2)
@@ -33,26 +43,29 @@ import os
 import math
 import time
 import argparse
-import random
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "simulation"))
 
-from core import Simulation, Agent, Grid, Position, StaticDispatcher
-from algo import PIBTCoordinator
+from core import Simulation, Agent, Grid, Position
+from algo import PIBTCoordinator, EasiestAllocator
+from mrta import FleetManager, QueueTaskSource, Task
 
 DEFAULT_BASE_URL = "http://localhost:8000"
 DEFAULT_CELL_MM = None      # cell size in mm; if None, derived from map_size / map_cells
 DEFAULT_MAP_CELLS = 5       # grid resolution NxN (5 -> 400 mm cells, 8 -> 250 mm on 2000x2000)
-DEFAULT_STEPS = 30
+DEFAULT_STEPS = 30          # max PIBT steps per phase (right, then left)
 DEFAULT_THRESHOLD = 100     # mm — bot considered "arrived" when distance < threshold.
                             # 100 mm: < half-cell (200 mm), > LH2 noise (~20 mm).
 DEFAULT_STEP_TIMEOUT = 8.0  # s — max wait per PIBT step
 DEFAULT_SETTLE = 0.3        # s — pause after arrival to let bots stop moving
+DEFAULT_WAIT = 5.0          # s — pause between "all at right" and starting the left phase
 
 
 # ── GridStateManager ──────────────────────────────────────────────────────────
+# Identical to sim_dotbot_pibt.py — see that file; duplicated rather than shared,
+# matching this codebase's existing convention across the L1/L2 scripts.
 
 class GridStateManager:
     """Fetches DotBot state from the REST API and converts it to PIBT grid positions."""
@@ -122,40 +135,48 @@ class GridStateManager:
         return result
 
 
-# ── PIBT planning ─────────────────────────────────────────────────────────────
+# ── MRTA planning ─────────────────────────────────────────────────────────────
 
-def _assign_random_goals(
-    agents: list[Agent],
-    grid: Grid,
-    rng: random.Random,
-) -> dict[Agent, Position]:
-    all_cells = [Position(x, y) for x in range(grid.width) for y in range(grid.height)]
-    chosen = rng.sample(all_cells, len(agents))
-    return {agent: cell for agent, cell in zip(agents, chosen)}
+def _edge_cells(cells_x: int, cells_y: int, side: str, n: int) -> list[Position]:
+    """Input: grid size, "left"/"right", and how many cells are needed.
+    Output: the n cells closest to that edge, filling one full column at a
+    time (edge column first) before moving inward — this is the *set* of
+    cells the fleet must cover, not an assignment of any cell to any bot.
+    """
+    columns = range(cells_x - 1, -1, -1) if side == "right" else range(cells_x)
+    cells: list[Position] = []
+    for x in columns:
+        for y in range(cells_y):
+            cells.append(Position(x, y))
+        if len(cells) >= n:
+            break
+    if len(cells) < n:
+        raise ValueError(
+            f"grid too small ({cells_x}x{cells_y} = {cells_x * cells_y} cells) "
+            f"to place {n} agents on the {side} side"
+        )
+    return cells[:n]
 
 
-def build_pibt(
-    grid_state: dict[str, Position],
-    cells_x: int,
-    cells_y: int,
-    rng: random.Random,
-):
+def build_sim(grid_state: dict[str, Position], cells_x: int, cells_y: int):
+    """Builds a Simulation driven by FleetManager/QueueTaskSource, same shape
+    as sim_dotbot_mrta.py's build_mrta(): the dispatcher is a fleet of
+    interchangeable tasks, not a fixed per-agent goal, so a phase's target
+    cells are a *mutual* objective — any free bot may take any cell.
+    """
     grid = Grid(width=cells_x, height=cells_y)
     addresses = list(grid_state.keys())
     agents = [Agent(agent_id=i, position=grid_state[addr]) for i, addr in enumerate(addresses)]
-    goals_by_agent = _assign_random_goals(agents, grid, rng)
-    # DispatchIntent (and StaticDispatcher) are agent_id-keyed, not Agent-keyed.
-    goals_by_id = {agent.agent_id: pos for agent, pos in goals_by_agent.items()}
-    pibt = PIBTCoordinator()
-    dispatcher = StaticDispatcher(goals=goals_by_id)
-    sim = Simulation(grid, coordinator=pibt, dispatcher=dispatcher)
+    queue_source = QueueTaskSource()
+    fleet = FleetManager(source=queue_source, allocator=EasiestAllocator())
+    sim = Simulation(grid, coordinator=PIBTCoordinator(), dispatcher=fleet)
     for agent in agents:
         sim.add_agent(agent)
-    goals_by_address = {addresses[i]: goals_by_agent[agents[i]] for i in range(len(agents))}
-    return sim, agents, addresses, goals_by_agent, goals_by_address
+    return sim, agents, addresses, queue_source, fleet
 
 
-# ── Synchronisation ───────────────────────────────────────────────────────────
+# ── Synchronisation / navigation ──────────────────────────────────────────────
+# Identical to sim_dotbot_pibt.py.
 
 def wait_until_all_arrived(
     gsm: GridStateManager,
@@ -193,6 +214,24 @@ def wait_until_all_arrived(
     return arrived
 
 
+def send_waypoints(
+    base_url: str,
+    address: str,
+    waypoints_mm: list[tuple[float, float]],
+    threshold: int,
+) -> None:
+    payload = {
+        "threshold": threshold,
+        "waypoints": [{"x": float(x), "y": float(y)} for x, y in waypoints_mm],
+    }
+    r = requests.put(
+        f"{base_url}/controller/dotbots/{address}/0/waypoints",
+        json=payload,
+        timeout=5,
+    )
+    r.raise_for_status()
+
+
 def _send_all_parallel(
     base_url: str,
     moved_mm: dict[str, tuple[float, float]],
@@ -213,80 +252,6 @@ def _send_all_parallel(
                 print(f"    -> Send error {addr[:8]}...: {e}")
 
 
-# ── Step-by-step execution ────────────────────────────────────────────────────
-
-def run_pibt_live(
-    gsm: GridStateManager,
-    sim: Simulation,
-    agents: list[Agent],
-    addresses: list[str],
-    goals_by_agent: dict[Agent, Position],
-    threshold: int,
-    steps: int,
-    step_timeout: float,
-    settle_s: float,
-    dry_run: bool,
-) -> None:
-    prev = {addr: agents[i].position for i, addr in enumerate(addresses)}
-    next_targets: dict[str, Position] | None = None  # pre-computed during bot travel
-
-    for step in range(1, steps + 1):
-        if next_targets is not None:
-            targets = next_targets
-            next_targets = None
-        else:
-            sim.step()
-            targets = {addr: agents[i].position for i, addr in enumerate(addresses)}
-
-        moved = {addr: cell for addr, cell in targets.items() if cell != prev[addr]}
-        all_at_goal = all(agents[i].position == goals_by_agent[agents[i]] for i in range(len(agents)))
-
-        print(f"\n── Step {step} ──")
-        for addr, cell in targets.items():
-            x, y = gsm.cell_to_mm(cell)
-            tag = "" if addr in moved else "  (stationary)"
-            print(f"  {addr[:8]}... -> cell {cell} = ({x:.0f}, {y:.0f}) mm{tag}")
-
-        if not dry_run:
-            # 1. Send all waypoints in parallel
-            _send_all_parallel(
-                gsm.base_url,
-                {addr: gsm.cell_to_mm(cell) for addr, cell in moved.items()},
-                threshold,
-            )
-            # 2. Pre-compute next step while bots travel
-            if step < steps and not all_at_goal:
-                sim.step()
-                next_targets = {addr: agents[i].position for i, addr in enumerate(addresses)}
-            # 4. Wait with adaptive polling
-            wait_until_all_arrived(gsm, targets, threshold, step_timeout, settle_s)
-
-        prev = targets
-        if all_at_goal:
-            print(f"\nAll bots reached their goal at step {step}.")
-            break
-
-
-# ── DotBot navigation ─────────────────────────────────────────────────────────
-
-def send_waypoints(
-    base_url: str,
-    address: str,
-    waypoints_mm: list[tuple[float, float]],
-    threshold: int,
-) -> None:
-    payload = {
-        "threshold": threshold,
-        "waypoints": [{"x": float(x), "y": float(y)} for x, y in waypoints_mm],
-    }
-    r = requests.put(
-        f"{base_url}/controller/dotbots/{address}/0/waypoints",
-        json=payload,
-        timeout=5,
-    )
-    r.raise_for_status()
-
-
 def fetch_grid_state_with_retry(
     gsm: GridStateManager,
     min_bots: int,
@@ -303,14 +268,84 @@ def fetch_grid_state_with_retry(
     return state
 
 
+# ── Step-by-step execution ────────────────────────────────────────────────────
+
+def run_phase(
+    gsm: GridStateManager,
+    sim: Simulation,
+    agents: list[Agent],
+    addresses: list[str],
+    queue_source: QueueTaskSource,
+    fleet: FleetManager,
+    target_cells: list[Position],
+    threshold: int,
+    max_steps: int,
+    step_timeout: float,
+    settle_s: float,
+    dry_run: bool,
+    phase_label: str,
+) -> bool:
+    """Pushes one Task per target cell (eligible=None -> any free agent may
+    take it) and runs sim.step() until FleetManager has resolved every one
+    of them (DONE or FAILED -> pruned out of fleet.tasks) or max_steps is
+    exhausted. Which bot ends up on which cell is left entirely to
+    EasiestAllocator; the only condition checked here is that the whole
+    task batch has been resolved. Returns True iff every task completed
+    (none failed).
+    """
+    queue_source.push_many([
+        Task(task_id=0, target=cell, eligible=None, created_step=sim.current_step)
+        for cell in target_cells
+    ])
+    completed_before, failed_before = fleet.completed_count, fleet.failed_count
+    prev = {addr: agents[i].position for i, addr in enumerate(addresses)}
+
+    for step in range(1, max_steps + 1):
+        sim.step()
+        targets = {addr: agents[i].position for i, addr in enumerate(addresses)}
+        moved = {addr: cell for addr, cell in targets.items() if cell != prev[addr]}
+
+        print(f"\n── [{phase_label}] Step {step} ──"
+              f"  (pending/assigned: {len(fleet.tasks)})")
+        for addr, cell in targets.items():
+            x, y = gsm.cell_to_mm(cell)
+            tag = "" if addr in moved else "  (stationary)"
+            print(f"  {addr[:8]}... -> cell {cell} = ({x:.0f}, {y:.0f}) mm{tag}")
+
+        if not dry_run:
+            _send_all_parallel(
+                gsm.base_url,
+                {addr: gsm.cell_to_mm(cell) for addr, cell in moved.items()},
+                threshold,
+            )
+            wait_until_all_arrived(gsm, targets, threshold, step_timeout, settle_s)
+
+        prev = targets
+        if not fleet.tasks:
+            failed = fleet.failed_count - failed_before
+            completed = fleet.completed_count - completed_before
+            print(f"\n[{phase_label}] All {len(target_cells)} task(s) resolved at step {step} "
+                  f"(completed={completed}, failed={failed}).")
+            return failed == 0
+
+    print(f"\n[{phase_label}] ⚠ max steps ({max_steps}) reached with "
+          f"{len(fleet.tasks)} task(s) still unresolved.")
+    return False
+
+
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="PIBT -> DotBot simulator demo (step-by-step)")
+    parser = argparse.ArgumentParser(
+        description="PIBT -> DotBot simulator demo: all bots right, wait, then all bots left"
+    )
     parser.add_argument("--dry-run", action="store_true",
                         help="Print step-by-step targets without sending or waiting")
     parser.add_argument("--steps", type=int, default=DEFAULT_STEPS,
-                        help=f"Number of PIBT steps (default: {DEFAULT_STEPS})")
+                        help=f"Max PIBT steps per phase (default: {DEFAULT_STEPS})")
+    parser.add_argument("--wait", type=float, default=DEFAULT_WAIT,
+                        help=f"Pause (s) between the right phase finishing and the left phase "
+                             f"starting (default: {DEFAULT_WAIT})")
     parser.add_argument("--cell-mm", type=int, default=DEFAULT_CELL_MM,
                         help="Cell size in mm (default: derived from map_size / --map-cells)")
     parser.add_argument("--map-cells", type=int, default=DEFAULT_MAP_CELLS,
@@ -326,11 +361,8 @@ def main() -> None:
                         help="Minimum localised bots required at startup (default: 2)")
     parser.add_argument("--base", default=DEFAULT_BASE_URL,
                         help=f"Controller URL (default: {DEFAULT_BASE_URL})")
-    parser.add_argument("--seed", type=int, default=None,
-                        help="RNG seed for reproducible goals (default: random)")
     args = parser.parse_args()
 
-    rng = random.Random(args.seed)
     gsm = GridStateManager(args.base, args.cell_mm, args.map_cells)
 
     print(f"Connecting to {args.base}...")
@@ -354,27 +386,37 @@ def main() -> None:
         p = pos_by_addr.get(addr, {})
         print(f"  {addr[:8]}...  pos=({p.get('x', '?'):.0f}, {p.get('y', '?'):.0f}) mm  cell={cell}")
 
-    print(f"\nPIBT planning — grid {gsm.map_cells_x}x{gsm.map_cells_y} cells "
-          f"({width_mm}x{height_mm} mm, cell={gsm.cell_mm} mm), {args.steps} steps max...")
-
-    sim, agents, addresses, goals_by_agent, goals_by_address = build_pibt(
-        grid_state, gsm.map_cells_x, gsm.map_cells_y, rng
+    sim, agents, addresses, queue_source, fleet = build_sim(
+        grid_state, gsm.map_cells_x, gsm.map_cells_y
     )
-    print("Assigned goals:")
-    for addr in addresses:
-        print(f"  {addr[:8]}...  start={grid_state[addr]}  goal={goals_by_address[addr]}")
 
     mode = "[dry-run] " if args.dry_run else ""
-    print(f"\n{mode}Step-by-step execution "
-          f"(threshold={args.threshold} mm, step-timeout={args.step_timeout}s)...")
+    print(f"\n{mode}Grid {gsm.map_cells_x}x{gsm.map_cells_y} cells "
+          f"({width_mm}x{height_mm} mm, cell={gsm.cell_mm} mm).")
 
-    run_pibt_live(
-        gsm, sim, agents, addresses, goals_by_agent,
-        threshold=args.threshold,
-        steps=args.steps,
-        step_timeout=args.step_timeout,
-        settle_s=args.settle,
-        dry_run=args.dry_run,
+    # Phase 1: the fleet's mutual objective is the rightmost N cells — any
+    # free bot may take any one of them, EasiestAllocator decides which.
+    right_cells = _edge_cells(gsm.map_cells_x, gsm.map_cells_y, "right", len(agents))
+    print(f"\nPhase 1 — RIGHT, mutual objective cells: {right_cells}")
+    run_phase(
+        gsm, sim, agents, addresses, queue_source, fleet, right_cells,
+        threshold=args.threshold, max_steps=args.steps,
+        step_timeout=args.step_timeout, settle_s=args.settle,
+        dry_run=args.dry_run, phase_label="RIGHT",
+    )
+
+    print(f"\nWaiting {args.wait}s before sending everyone left...")
+    if not args.dry_run:
+        time.sleep(args.wait)
+
+    # Phase 2: same, mutual objective is now the leftmost N cells.
+    left_cells = _edge_cells(gsm.map_cells_x, gsm.map_cells_y, "left", len(agents))
+    print(f"\nPhase 2 — LEFT, mutual objective cells: {left_cells}")
+    run_phase(
+        gsm, sim, agents, addresses, queue_source, fleet, left_cells,
+        threshold=args.threshold, max_steps=args.steps,
+        step_timeout=args.step_timeout, settle_s=args.settle,
+        dry_run=args.dry_run, phase_label="LEFT",
     )
 
     if args.dry_run:

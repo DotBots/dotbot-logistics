@@ -26,8 +26,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "simulation"))
-from core import Simulation, Agent, Grid, Position
-from algo.pibt import PIBT
+from core import Simulation, Agent, Grid, Position, StaticDispatcher
+from algo import PIBTCoordinator
 
 import run_metrics
 
@@ -142,8 +142,11 @@ def build_pibt(grid_state, cells_x, cells_y, rng):
     addresses = list(grid_state.keys())
     agents    = [Agent(agent_id=i, position=grid_state[addr]) for i, addr in enumerate(addresses)]
     goals_by_agent = _assign_random_goals(agents, grid, rng)
-    pibt = PIBT(goals=goals_by_agent)
-    sim  = Simulation(grid, coordinator=pibt)
+    # StaticDispatcher/DispatchIntent are agent_id-keyed, not Agent-keyed.
+    goals_by_id = {agent.agent_id: pos for agent, pos in goals_by_agent.items()}
+    pibt = PIBTCoordinator()
+    dispatcher = StaticDispatcher(goals=goals_by_id)
+    sim  = Simulation(grid, coordinator=pibt, dispatcher=dispatcher)
     for agent in agents:
         sim.add_agent(agent)
     goals_by_address = {addresses[i]: goals_by_agent[agents[i]] for i in range(len(agents))}
@@ -205,7 +208,15 @@ def _send_all_parallel(base_url, moved_mm, threshold):
 
 
 # ── Closed-loop re-sync ────────────────────────────────────────────────────────
-def resync_simulation(gsm, sim, agents, addresses, goals_by_agent, last_seen, fallback):
+def resync_simulation(gsm, sim, agents, addresses, last_seen, fallback):
+    """Corrects agent positions from LH2 truth after each step.
+
+    No longer needs to poke the coordinator's priorities: PIBTCoordinator
+    re-checks "at its goal" (position == self.goals.get(agent)) at the
+    start of every plan() call and restores any -inf demotion itself as
+    soon as the corrected position shows the agent is no longer there —
+    see the "-inf demotion is reversible" invariant in algo/AGENT.md.
+    """
     raw = {}
     for addr in addresses:
         p        = last_seen.get(addr)
@@ -213,15 +224,10 @@ def resync_simulation(gsm, sim, agents, addresses, goals_by_agent, last_seen, fa
     real_cells = gsm.resolve_conflicts(raw)
     for agent in agents:
         sim.grid.remove(agent)
-    priorities = getattr(sim.coordinator, "priorities", None)
     for i, addr in enumerate(addresses):
         agent          = agents[i]
         agent.position = real_cells[addr]
         sim.grid.place(agent)
-        if (priorities is not None
-                and agent.position != goals_by_agent[agent]
-                and priorities.get(agent) == float("-inf")):
-            priorities[agent] = float(i)
     return real_cells
 
 
@@ -286,7 +292,7 @@ def run_pibt_live(gsm, sim, agents, addresses, goals_by_agent,
             step_timeouts += 1
 
         prev = resync_simulation(
-            gsm, sim, agents, addresses, goals_by_agent, last_seen, fallback=targets
+            gsm, sim, agents, addresses, last_seen, fallback=targets
         )
         if all_at_goal():
             print(f"\nAll bots reached their goal at step {step} (verified from LH2).")

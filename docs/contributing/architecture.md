@@ -1,9 +1,17 @@
 # Architecture
 
+!!! warning "Describes a removed engine"
+    `simulation/` (referenced throughout this page) was removed on 2026-08-27; reconnecting
+    to the real upstream PIBT/MRTA engine is deliberate future work, not done yet — see the
+    root `AGENT.md`'s "Current known inconsistencies" and `Roadmap.md` §0. This page is kept
+    as a historical description of the boundary design, not a guide to running code that
+    exists today.
+
 DotBot Logistics straddles two worlds that speak different languages:
 
 - the **mm world** — the DotBot controller's REST API, where everything is millimetres;
-- the **cell world** — the `simulation/` engine, where everything is integer grid cells.
+- the **cell world** — the (removed) `simulation/` engine, where everything is integer grid
+  cells.
 
 A thin **conversion boundary** (the `GridStateManager` and the top-level driver functions in
 `real_dotbot_pibt.py` / `sim_dotbot_pibt.py`) translates between them: it reads bot positions

@@ -5,6 +5,7 @@ __pycache__/
 *.pyo
 .env
 venv/
+script_perso*
 
 # Runtime / logs
 *.log
