@@ -1,273 +1,197 @@
-# dotbot-pibt
+# dotbot-logistics
 
-PIBT (Priority Inheritance with Backtracking) demos for a [DotBot][pydotbot-doc] swarm —
-collision-free multi-robot navigation on a discrete grid.
+**MRTA mode for a [DotBot][pydotbot-doc] swarm** — click a robot and a point in the DotBot web
+console, and PIBT (Priority Inheritance with Backtracking) drives that robot there one grid cell
+at a time while routing around every other robot. Collision-free multi-robot navigation, driven
+by an operator, on top of the DotBot simulator (or real hardware).
 
-📖 **Documentation:** a three-level reproduction guide (algorithm → simulator → real
-hardware) lives under [`docs/`](docs/index.md) and builds as a MkDocs site (`mkdocs serve`).
-For the full project map, contributing conventions, and roadmap, see [`AGENT.md`](AGENT.md).
+This repo is the **bridge**: it wires the [MAPF_Simulation][mapf] PIBT engine to the DotBot
+controller's REST + WebSocket API. The planning engine itself is a separate package
+(`mapf-simulation`, installed automatically). The DotBot side (`pydotbot`) is also separate.
 
-## Status
+> **Scope note.** The only thing you run here is **MRTA mode**, via `mrta_server.py`. The older
+> Level 0/1/2 batch and demo scripts were removed on 2026-08-27; three unported ones are parked
+> in `test_scripts/` for reference. See [`AGENT.md`](AGENT.md) for the full project map.
 
-The vendored PIBT/MRTA engine this project used to bundle at `simulation/` was removed on
-2026-08-27. `sim_dotbot_mrta.py` has since been **reconnected** to the real engine (the
-`mapf-simulation` package, pulled in by `requirements.txt`) and is **verified working** — see
-"Getting started" below. `sim_pibt.py`, `sim_many_pibt.py`, `sim_dotbot_pibt.py`,
-`real_dotbot_pibt.py` and `real_dotbot_pibt_batch.py` are **still broken**: same engine, not yet
-ported. See [`AGENT.md`](AGENT.md)'s "Current known inconsistencies" for the up-to-date list.
+---
 
-## Getting started
+## What it does
 
-This repo has no committed virtual environment — set one up once:
+1. You run a DotBot swarm (simulated or real) and this repo's `mrta_server.py` next to it.
+2. In the DotBot web console you flip the **MRTA** pill to **ON**.
+3. You select a bot, click a point on the map, and hit **Apply waypoints** — the console's own
+   existing gesture, nothing new to learn.
+4. `mrta_server.py` catches that click, snaps it to the nearest grid cell, and hands it to PIBT.
+   The bot walks there one cell per tick, and PIBT bends its path around every other bot you've
+   sent somewhere. Bots nobody clicked stay parked.
+5. Flip the pill to **OFF** and every bot stops where it stands.
+
+Re-clicking a bot that's still moving redirects it immediately. Sending the console's **Stop
+nav** (an empty waypoint list) cancels that bot's target.
+
+---
+
+## What you need
+
+| Piece | Why | How you get it |
+|---|---|---|
+| Python 3.12 + a virtualenv | runs `mrta_server.py` | you make it (below) |
+| `mapf-simulation` (`core` + `pibt`) | the PIBT planning engine | pulled by `requirements.txt` from git |
+| `pydotbot` | the DotBot controller, simulator and web console | pulled by `requirements.txt` |
+| PyDotBot's `/mrta/*` proxy | lets the console's MRTA pill reach `mrta_server.py` | **only** on the `feat/mrta-mode-toggle` branch — editable install, below |
+
+If you skip the proxy you can still run `mrta_server.py --dry-run` (a wiring check) and reuse
+`mrta_mode/` as a library, but the console pill will read **MRTA N/A**.
+
+---
+
+## Install
 
 ```bash
 git clone https://github.com/DotBots/dotbot-logistics.git
 cd dotbot-logistics
-python3 -m venv venv && source venv/bin/activate
+
+python3.12 -m venv venv
+source venv/bin/activate          # bash/zsh   —   fish: source venv/bin/activate.fish
+
 pip install -r requirements.txt
 ```
 
-`requirements.txt` installs everything needed: `pydotbot[calibrate]` (the DotBot controller,
-simulator, and web UI), `requests`, `pygame` (Level 0 viewer only), `websockets` (the MRTA
-click-detection listener), and `mapf-simulation` — the PIBT/MRTA engine itself, pulled in as a
-git dependency (`git+https://github.com/RasdaCorentin/MAPF_Simulation.git@develop`), no separate
-checkout needed.
-
-Then, to see it actually move a robot — this exact sequence was verified end-to-end on
-2026-08-27:
+Then, to drive it from the console, replace the released `pydotbot` with the branch that carries
+the `/mrta/*` proxy:
 
 ```bash
-# terminal 1 — start the simulated swarm (10 bots on a 5x5 grid, 2000x2000 mm)
-dotbot run simulator --map-size 2000x2000 --simulator-init-state simulator_init_state.toml
-
-# terminal 2 — start MRTA mode
-python sim_dotbot_mrta.py
+pip install -e ../dotbot-workspace/repos/PyDotBot   # branch feat/mrta-mode-toggle
 ```
 
-Open `http://localhost:8000/PyDotBot/` in a browser, select a bot, click a point on the map, click
-"Apply waypoints" — the existing, unmodified web UI flow. `sim_dotbot_mrta.py` picks up that
-click, plans a PIBT path to the clicked cell, and drives the bot there step by step while routing
-around every other bot. Bots nobody has clicked stay parked. `Ctrl+C` to stop.
-
-For real hardware (Level 2) instead of the simulator, see
-[`docs/level-2-real.md`](docs/level-2-real.md) for the MQTT broker / gateway / LH2 calibration
-bring-up — note that the real-hardware scripts (`real_dotbot_pibt.py`,
-`real_dotbot_pibt_batch.py`) are currently in the broken set above.
-
-## Contents
-
-| Path | Level | Description |
-|------|-------|-------------|
-| `sim_pibt.py` | 0 | Interactive pygame viewer — animates PIBT on a small grid (edit-in-file scenario). **Broken.** |
-| `sim_many_pibt.py` | 0 | Headless benchmark — PIBT sweep over grid resolution × N × seeds, writes a CSV. **Broken.** |
-| `sim_dotbot_pibt.py` | 1 | Drives the DotBot **simulator** through the controller API (parallel + pipelined). **Broken.** |
-| `sim_dotbot_mrta.py` | 1 | Persistent — click a bot then a cell in the existing web UI, PIBT drives it there while others carry on. **Works.** |
-| `real_dotbot_pibt.py` | 2 | Drives **real** DotBots, one waypoint per bot per step, sync barrier between steps. **Broken.** |
-| `real_dotbot_pibt_batch.py` | 2 | Parametrised batch test (`--bots N --runs M`) writing L1 metrics. **Broken.** |
-| `mrta_mode/` | 1 | Collaborator classes behind `sim_dotbot_mrta.py`'s MRTA mode — self-contained, see `AGENT.md`. |
-| `log/` | — | Experiment outputs — `raw_logs/` and metrics CSVs. |
-| `docs/` | — | MkDocs site — level-0/1/2 guides, installation, contributing. |
+`venv/` is gitignored; there is no committed environment.
 
 ---
 
-## Scripts
+## Run it
 
-### Level 0 — algorithm only
+Three things run side by side. Use three terminals (all with the venv activated).
 
-#### `sim_pibt.py` — interactive viewer
+### 1 — the DotBot swarm
 
-Animates PIBT on a small grid and shows, at each step, the priority order, every agent's
-move, and the priority-inheritance chains. The scenario (grid size, start positions, goals,
-priorities, obstacles) is **edited directly in the file** — there are no CLI options.
-
-```bash
-python sim_pibt.py        # launch the interactive viewer
-python sim_pibt.py -d     # debug mode (hides the pygame support prompt)
-```
-
-| Key | Action |
-|-----|--------|
-| `Space` | pause / play |
-| `→` | step forward |
-| `←` | step back |
-| `Q` / `Esc` | quit |
-
-#### `sim_many_pibt.py` — headless benchmark
-
-Runs PIBT with no pygame and no hardware, sweeping grid resolution × number of robots ×
-random seeds, and writes one CSV row per instance plus a breaking-point summary. The arena
-is fixed at **2000 × 2000 mm** and the cell size varies: 4×4 (500 mm), 5×5 (400 mm),
-8×8 (250 mm).
+The simulator needs an init-state TOML describing at least two bots. This repo no longer ships
+one; the PyDotBot checkout has a sample, or point `--simulator-init-state` at your own.
 
 ```bash
-python sim_many_pibt.py                  # full sweep, 30 seeds
-python sim_many_pibt.py --seeds 5        # quick smoke-test
-python sim_many_pibt.py --out my.csv     # custom output file
+dotbot run simulator --map-size 2000x2000 \
+    --simulator-init-state ../dotbot-workspace/repos/PyDotBot/simulator_init_state.toml \
+    --mrta-url http://localhost:8002
 ```
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--seeds N` | `30` | Number of seeds per (grid, N) cell |
-| `--out FILE` | `l0_results.csv` | Output CSV file |
+`--mrta-url` (equivalently `[run.controller] mrta_url` in the pydotbot config, or the
+`DOTBOT_MRTA_URL` env var) tells the controller's `/mrta/*` proxy where `mrta_server.py` listens.
 
-### Level 1 — simulator
-
-#### `sim_dotbot_pibt.py`
-
-Drives the DotBot **simulator** through the controller's REST API. Sends one waypoint per
-bot per step and waits for **all** bots to arrive (synchronisation barrier) before the next
-step. Optimised for the simulator: waypoints are sent in parallel, and the next PIBT step is
-pre-computed while the bots travel.
+### 2 — the MRTA server
 
 ```bash
-python sim_dotbot_pibt.py              # synchronised step-by-step run
-python sim_dotbot_pibt.py --dry-run    # print targets without sending or waiting
-python sim_dotbot_pibt.py --steps 40   # cap the number of PIBT steps
-python sim_dotbot_pibt.py --map-cells 8 # 8x8 grid (250 mm cells); default is 5x5 (400 mm)
-python sim_dotbot_pibt.py --seed 42    # reproducible random goals
+python mrta_server.py             # serves 0.0.0.0:8002
 ```
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--dry-run` | — | Print step-by-step targets without sending or waiting |
-| `--steps N` | `30` | Number of PIBT steps |
-| `--map-cells N` | `5` | Grid resolution N×N (5 → 400 mm cells, 8 → 250 mm on a 2000×2000 map) |
-| `--cell-mm N` | derived | Cell size in mm (overrides `--map-cells`; default: `map_size / --map-cells`) |
-| `--threshold N` | `100` | Arrival radius per cell in mm |
-| `--step-timeout S` | `8.0` | Max wait (s) per step |
-| `--settle S` | `0.3` | Pause (s) after arrival per step |
-| `--min-bots N` | `2` | Minimum localised bots required at startup |
-| `--base URL` | `http://localhost:8000` | Controller URL |
-| `--seed N` | random | RNG seed for reproducible goals |
+### 3 — the console
 
-#### `sim_dotbot_mrta.py` — persistent, click-to-target
+Open <http://localhost:8000/PyDotBot/>. The **MRTA** pill in the top bar should read **OFF**.
+(If it reads **MRTA N/A**, terminal 2 isn't running or `--mrta-url` doesn't point at it.)
 
-No fixed goals, no step limit: every bot starts parked and stays that way until an operator drives
-it, using the **existing, unmodified** DotBot web UI at `http://localhost:8000/PyDotBot/` — no
-frontend changes needed. Select a bot, click a point on the map, click "Apply waypoints" (the
-UI's own existing flow). The script detects that click over the controller's WebSocket status
-channel, snaps it to the nearest grid cell, and hands it to PIBT as a task restricted to that one
-bot — it then navigates there step by step, avoiding every other bot being driven the same way.
-Untouched bots simply stay put. Re-clicking a bot that's still mid-route redirects it immediately
-instead of queuing behind the old target. Runs until `Ctrl+C`. See "Getting started" above for the
-full working sequence.
+Flip it **ON** — it blinks amber while the server snapshots the fleet, then settles on **ON**
+with the bot count in its tooltip. Now drive bots as described in *What it does*. `Ctrl+C` in
+terminal 2 to shut the server down.
 
-```bash
-python sim_dotbot_mrta.py              # persistent run — click bots in the browser to drive them
-python sim_dotbot_mrta.py --dry-run    # connect and build the grid, send/wait nothing (wiring check)
-python sim_dotbot_mrta.py --map-cells 8  # 8x8 grid (250 mm cells); default is 5x5 (400 mm)
-```
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--dry-run` | — | Connect and build the grid without sending or waiting |
-| `--map-cells N` | `5` | Grid resolution N×N (5 → 400 mm cells, 8 → 250 mm on a 2000×2000 map) |
-| `--cell-mm N` | derived | Cell size in mm (overrides `--map-cells`; default: `map_size / --map-cells`) |
-| `--threshold N` | `100` | Arrival radius per cell in mm |
-| `--step-timeout S` | `4.0` | Max wait (s) per step |
-| `--settle S` | `0.3` | Pause (s) after arrival per step |
-| `--min-bots N` | `2` | Minimum localised bots required at startup |
-| `--base URL` | `http://localhost:8000` | Controller URL |
-| `--ws-url URL` | derived from `--base` | Controller WebSocket status URL |
-| `--idle-sleep S` | `0.2` | Pause (s) between idle ticks with nothing to do |
-| `--reconcile-interval S` | `2.0` | Period (s) of the REST-based safety net that recovers a click made while the WebSocket link was down |
-
-### Level 2 — real hardware
-
-#### `real_dotbot_pibt.py`
-
-The conservative driver for **real** DotBots (also works against the simulator). Computes
-one PIBT step, sends one waypoint per moved bot, then waits at a synchronisation barrier
-that polls the bots' real LH2 positions until all have arrived. A bot that exceeds
-`--step-timeout` is logged and skipped (no deadlock). Same options and defaults as
-`sim_dotbot_pibt.py`.
-
-```bash
-python real_dotbot_pibt.py                              # real run
-python real_dotbot_pibt.py --dry-run                    # print targets only
-python real_dotbot_pibt.py --threshold 120 --step-timeout 10
-python real_dotbot_pibt.py --min-bots 3
-```
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--dry-run` | — | Print step-by-step targets without sending or waiting |
-| `--steps N` | `30` | Number of PIBT steps |
-| `--map-cells N` | `5` | Grid resolution N×N (5 → 400 mm cells, 8 → 250 mm on a 2000×2000 map) |
-| `--cell-mm N` | derived | Cell size in mm (overrides `--map-cells`; default: `map_size / --map-cells`) |
-| `--threshold N` | `100` | Arrival radius per cell in mm |
-| `--step-timeout S` | `8.0` | Max wait (s) per step; beyond it the bot is logged and skipped |
-| `--settle S` | `0.3` | Pause (s) after arrival per step |
-| `--min-bots N` | `2` | Minimum localised bots required at startup |
-| `--base URL` | `http://localhost:8000` | Controller URL |
-| `--seed N` | random | RNG seed for reproducible goals |
-
-#### `real_dotbot_pibt_batch.py`
-
-Batch test harness: runs PIBT step-by-step on `N` real DotBots for `M` independent trials
-and records per-run metrics and a summary under `log/` (raw logs in `log/raw_logs/`).
-
-```bash
-python real_dotbot_pibt_batch.py --bots 8            # 8 bots, 5 runs (default)
-python real_dotbot_pibt_batch.py --bots 4 --runs 10  # 4 bots, 10 runs
-```
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--bots N` | `8` | Number of DotBots in the batch |
-| `--runs M` | `5` | Number of independent runs |
+> The fleet is snapshotted when you flip ON. To pick up a bot that joined later, flip **OFF then
+> ON** again.
 
 ---
 
-## Grid ↔ mm mapping
+## `mrta_server.py` options
+
+`python mrta_server.py --help` for the full list. The ones you're likely to touch:
+
+| Option | Default | Meaning |
+|---|---|---|
+| `--dry-run` | off | Build the session and tick, but never send waypoints or wait — a startup/wiring smoke test |
+| `--mrta-port N` | `8002` | Port this server listens on (must match the controller's `--mrta-url`) |
+| `--mrta-host H` | `0.0.0.0` | Bind address |
+| `--base URL` | `http://localhost:8000` | The DotBot controller |
+| `--map-cells N` | `5` | Grid resolution N×N — `5` → 400 mm cells, `8` → 250 mm, on a 2000×2000 map |
+| `--cell-mm N` | derived | Cell size in mm (overrides `--map-cells`) |
+| `--threshold N` | `100` | How close (mm) a bot must get to a cell centre to count as "arrived" |
+| `--step-timeout S` | `4.0` | Max seconds to wait for all bots to finish a step before moving on |
+| `--settle S` | `0.3` | Pause after each step to let bots come to rest |
+| `--min-bots N` | `2` | Refuse to turn ON until at least this many localised bots are present |
+| `--ws-url URL` | from `--base` | Controller WebSocket status URL |
+| `--reconcile-interval S` | `2.0` | How often to fall back to a REST poll if the WebSocket misses a click or position |
+
+---
+
+## How it works (short version)
+
+- **Detecting the click.** Every `PUT .../waypoints` the console sends triggers a broadcast on
+  the controller's `ws://…/controller/ws/status` channel. `mrta_server.py` listens there — the
+  same channel the frontend itself uses — and tells a real operator click apart from the echo of
+  a `PUT` it just sent itself.
+- **Planning.** The click's cell goes to `pibt.LifelongGoalOrchestrator.set_target(agent_id,
+  cell)` — one target slot per bot, always overwriting. PIBT then advances the whole world one
+  step, and every driven bot gets its next cell.
+- **Moving.** One waypoint per bot per step, then a **synchronisation barrier**: the server waits
+  (on live WebSocket positions, with a REST poll as backup) until every bot has actually arrived
+  before planning the next step. That barrier is what makes PIBT's collision-avoidance hold on
+  asynchronous hardware — it is not skippable.
+- **No console changes.** The operator uses the stock DotBot web UI. The only change on the
+  PyDotBot side is the `/mrta/*` proxy — one URL, no MRTA logic.
+
+Grid ↔ millimetre mapping:
 
 ```
-cell (gx, gy)  →  centre mm = (gx×cell_mm + cell_mm//2, gy×cell_mm + cell_mm//2)
-pos (x, y) mm  →  cell      = (int(x/cell_mm), int(y/cell_mm))
+cell (gx, gy)  →  centre in mm = (gx·cell_mm + cell_mm/2,  gy·cell_mm + cell_mm/2)
+position (x, y) mm  →  cell     = (⌊x / cell_mm⌋,  ⌊y / cell_mm⌋)
 ```
 
-With the default `--map-cells 5` and a `2000×2000 mm` map: `cell_mm=400`, 5×5 grid
-(`--map-cells 8` gives `cell_mm=250`, 8×8).
+For the design in detail, read `diagrammes/sim_dotbot_mrta_ws_target_class_diagram.puml` and
+[`AGENT.md`](AGENT.md).
 
-## sim vs real
+---
 
-```
-sim_dotbot_pibt.py              real_dotbot_pibt.py
-─────────────────────────────  ─────────────────────────────────
-Simulator only                 Real hardware AND simulator
-Sends waypoints in parallel    Sends one waypoint per bot
-Pipelines next PIBT step       Compute → send → wait (serial)
-─────────────────────────────  ─────────────────────────────────
-Both: one waypoint/bot/step, sync barrier on real positions
-with a per-step timeout, threshold = 100 mm
-```
+## What's in the repo
+
+| Path | What it is |
+|---|---|
+| `mrta_server.py` | The entry point — CLI that serves the console-toggle HTTP API (`GET /status`, `POST /mode`) |
+| `mrta_mode/` | The MRTA-mode classes, one per file: `MRTASession`, the WS listener, the click translator, the position store, the REST clients, and `server.py`'s `MrtaMode` state machine. Self-contained — reusable without the rest of this repo. |
+| `diagrammes/` | PlantUML design diagrams |
+| `docs/` | MkDocs site (`mkdocs serve`) — three-level guides. **Partly stale**: still describes the removed batch scripts. |
+| `test_scripts/` | `sim_dotbot_pibt.py`, `sim_dotbot_right_left.py`, `sim_many_pibt.py` — archived, currently broken (they import the removed vendored engine), kept only as a porting reference. |
+| `log/` | Experiment outputs from past runs |
+| [`AGENT.md`](AGENT.md) | Full project map, install/reuse guide for agents, contributing conventions, roadmap |
+
+---
 
 ## Troubleshooting
 
-### WSL not detecting the TTY
+**The pill reads `MRTA N/A`.** The console can't reach `mrta_server.py`. Check terminal 2 is
+running, and that the controller was started with `--mrta-url http://localhost:8002` (or the
+config-file / env-var equivalent) pointing at the right port.
 
-If you have performed the `usbipd` attach command but your WSL instance is not detecting the
-device (e.g., no `/dev/ttyUSB0` or `/dev/ttyACM0` appears), check the following, in order:
+**Toggling ON blinks amber then falls back to OFF.** `connect()` couldn't find `--min-bots`
+localised bots within ~10 s. Check the simulator is running with a valid init-state TOML and that
+bots have LH2 positions; lower `--min-bots` if you're testing with one bot.
 
-1. **Install usbipd on Windows** (PowerShell as Admin):
-   ```powershell
-   winget install --source winget dorssel.usbipd-win
-   ```
-2. **List devices** (PowerShell):
-   ```powershell
-   usbipd list
-   ```
-3. **Bind the device** (PowerShell as Admin — authorizes Windows to share it with WSL):
-   ```powershell
-   usbipd bind --busid <BUSID>
-   ```
-4. **Attach to WSL** (PowerShell):
-   ```powershell
-   usbipd attach --wsl --busid <BUSID>
-   ```
+**WSL isn't detecting the TTY** (real hardware, `usbipd` attach done but no `/dev/ttyUSB0` /
+`/dev/ttyACM0`):
+
+1. Install usbipd on Windows (PowerShell as Admin): `winget install --source winget dorssel.usbipd-win`
+2. `usbipd list`
+3. `usbipd bind --busid <BUSID>` (Admin)
+4. `usbipd attach --wsl --busid <BUSID>`
+
+---
 
 ## License
 
 [BSD 3-Clause](LICENSE)
 
 [pydotbot-doc]: https://pydotbot.readthedocs.io/en/latest/
+[mapf]: https://github.com/RasdaCorentin/MAPF_Simulation
