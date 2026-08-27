@@ -9,7 +9,7 @@ fetch_dotbots() when the WS status channel misses an update.
 
 import requests
 
-from core import Position
+from core import Coordinates2D
 
 
 class GridStateManager:
@@ -43,33 +43,33 @@ class GridStateManager:
         data = r.json()
         return data["width"], data["height"]
 
-    def mm_to_cell(self, x_mm: float, y_mm: float) -> Position:
+    def mm_to_cell(self, x_mm: float, y_mm: float) -> Coordinates2D:
         gx = max(0, min(self.map_cells_x - 1, int(x_mm / self.cell_mm)))
         gy = max(0, min(self.map_cells_y - 1, int(y_mm / self.cell_mm)))
-        return Position(gx, gy)
+        return Coordinates2D(gx, gy)
 
-    def cell_to_mm(self, pos: Position) -> tuple[float, float]:
+    def cell_to_mm(self, pos: Coordinates2D) -> tuple[float, float]:
         return (pos.x * self.cell_mm + self.cell_mm // 2,
                 pos.y * self.cell_mm + self.cell_mm // 2)
 
-    def get_grid_state(self) -> dict[str, Position]:
+    def get_grid_state(self) -> dict[str, Coordinates2D]:
         dotbots = self.fetch_dotbots()
-        raw: dict[str, Position] = {}
+        raw: dict[str, Coordinates2D] = {}
         for bot in dotbots:
             p = bot["lh2_position"]
             raw[bot["address"]] = self.mm_to_cell(p["x"], p["y"])
         return self.resolve_conflicts(raw)
 
-    def resolve_conflicts(self, positions: dict[str, Position]) -> dict[str, Position]:
-        occupied: dict[Position, str] = {}
-        result: dict[str, Position] = {}
+    def resolve_conflicts(self, positions: dict[str, Coordinates2D]) -> dict[str, Coordinates2D]:
+        occupied: dict[Coordinates2D, str] = {}
+        result: dict[str, Coordinates2D] = {}
         for address, pos in positions.items():
             if pos not in occupied:
                 occupied[pos] = address
                 result[address] = pos
             else:
                 candidates = [
-                    Position(pos.x + dx, pos.y + dy)
+                    Coordinates2D(pos.x + dx, pos.y + dy)
                     for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1),
                                    (1, 1), (-1, 1), (1, -1), (-1, -1)]
                     if 0 <= pos.x + dx < self.map_cells_x and 0 <= pos.y + dy < self.map_cells_y

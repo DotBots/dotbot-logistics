@@ -1,5 +1,5 @@
 pydotbot[calibrate]
 requests>=2.31
 pygame>=2.5
-scipy>=1.11  # mrta/KDTreeGreedyAllocator (K-D tree nearest-neighbor allocation)
 websockets>=13.0  # WS listener for sim_dotbot_mrta.py manual-click detection (transitive dep of pydotbot)
+mapf-simulation @ git+https://github.com/RasdaCorentin/MAPF_Simulation.git@develop  # core + pibt, used by mrta_mode/

@@ -7,12 +7,12 @@ in that while-loop for standalone CLI use.
 """
 
 import time
+from collections import deque
 
 import requests
 
-from core import Simulation, Agent, Grid, Position
-from algo import PIBTCoordinator, EasiestAllocator
-from mrta import FleetManager, QueueTaskSource, Task, TaskState
+from core import Agent, Coordinates2D, Grid2D, WorldEngine
+from pibt import PIBTPlanner, LifelongGoalOrchestrator
 
 from .click_event import ClickEvent
 from .controller_status_listener import ControllerStatusListener
@@ -37,8 +37,8 @@ def _derive_ws_url(base_url: str) -> str:
 
 def _fetch_grid_state_with_retry(
     gsm: GridStateManager, min_bots: int, attempts: int = 10, delay: float = 1.0
-) -> dict[str, Position]:
-    state: dict[str, Position] = {}
+) -> dict[str, Coordinates2D]:
+    state: dict[str, Coordinates2D] = {}
     for _ in range(attempts):
         state = gsm.get_grid_state()
         if len(state) >= min_bots:
@@ -56,11 +56,10 @@ class MRTASession:
         position_store: LivePositionStore,
         translator: ManualClickTranslator,
         command_client: WaypointCommandClient,
-        sim: Simulation,
+        engine: WorldEngine,
+        orchestrator: LifelongGoalOrchestrator,
         agents: list[Agent],
         addresses: list[str],
-        queue_source: QueueTaskSource,
-        fleet: FleetManager,
         threshold: int,
         step_timeout: float,
         settle_s: float,
@@ -73,11 +72,10 @@ class MRTASession:
         self.position_store = position_store
         self.translator = translator
         self.command_client = command_client
-        self.sim = sim
+        self.engine = engine
+        self._orchestrator = orchestrator
         self.agents = agents
         self.addresses = addresses
-        self.queue_source = queue_source
-        self.fleet = fleet
         self.threshold = threshold
         self.step_timeout = step_timeout
         self.settle_s = settle_s
@@ -90,6 +88,21 @@ class MRTASession:
         self._step = 0
         self._last_reconcile = 0.0
         self._unknown_addresses: set[str] = set()
+
+        # Mirrors LifelongGoalOrchestrator's own (private) _target dict: MRTASession
+        # is the only caller of set_target(), so it can track the same state without
+        # reading the orchestrator's internals. None = parked (no active target).
+        self._active_target: dict[int, Coordinates2D | None] = {
+            agent.agent_id: None for agent in agents
+        }
+        # LifelongGoalOrchestrator holds exactly one mutable target slot per agent,
+        # no queue (unlike the old FleetManager/Task model, where each waypoint-chain
+        # cell became its own queued Task). A multi-hop click is owned locally here:
+        # cells[0] goes to set_target(), the rest wait in this per-agent queue and are
+        # popped one at a time as the agent arrives at each one in turn.
+        self._pending_chain: dict[int, deque[Coordinates2D]] = {
+            agent.agent_id: deque() for agent in agents
+        }
 
     @classmethod
     def connect(
@@ -128,14 +141,13 @@ class MRTASession:
             p = pos_by_addr.get(addr, {})
             print(f"  {addr[:8]}...  pos=({p.get('x', '?'):.0f}, {p.get('y', '?'):.0f}) mm  cell={cell}")
 
-        grid = Grid(width=gsm.map_cells_x, height=gsm.map_cells_y)
+        grid = Grid2D(width=gsm.map_cells_x, height=gsm.map_cells_y)
         addresses = list(grid_state.keys())
         agents = [Agent(agent_id=i, position=grid_state[addr]) for i, addr in enumerate(addresses)]
-        queue_source = QueueTaskSource()
-        fleet = FleetManager(source=queue_source, allocator=EasiestAllocator())
-        sim = Simulation(grid, coordinator=PIBTCoordinator(), dispatcher=fleet)
+        orchestrator = LifelongGoalOrchestrator()
+        engine = WorldEngine(grid, planner=PIBTPlanner(), orchestrator=orchestrator)
         for agent in agents:
-            sim.add_agent(agent)
+            engine.register_agent(agent)
 
         translator = ManualClickTranslator(gsm)
         translator.seed_commanded(dotbots_raw)
@@ -158,7 +170,7 @@ class MRTASession:
 
         return cls(
             gsm, listener, position_store, translator, command_client,
-            sim, agents, addresses, queue_source, fleet,
+            engine, orchestrator, agents, addresses,
             threshold=threshold,
             step_timeout=step_timeout,
             settle_s=settle_s,
@@ -187,20 +199,27 @@ class MRTASession:
         agent = self._agent_by_addr[address]
         cells = self.translator.translate(event.waypoints_mm, agent.position)
         if not cells:
+            # Button.md fix C.3 (not applied here): an empty waypoint list is the
+            # operator's "Stop nav" and should cancel the agent's in-flight target
+            # instead of being ignored. Left as today's behaviour -- out of scope
+            # for this reconnection pass.
             return
-        self._cancel_agent_tasks(agent.agent_id)
-        self.queue_source.push_many([
-            Task(task_id=0, target=c, eligible=frozenset({agent.agent_id}), created_step=self._step)
-            for c in cells
-        ])
+
+        # set_target() overwrites any target already set for this agent
+        # unconditionally (LifelongGoalOrchestrator's own contract) -- a re-click
+        # on a bot mid-route needs no separate cancel step, unlike the old
+        # FleetManager/Task model's _cancel_agent_tasks().
+        self._orchestrator.set_target(agent.agent_id, cells[0])
+        self._active_target[agent.agent_id] = cells[0]
+        self._pending_chain[agent.agent_id] = deque(cells[1:])
         print(f"  -> manual target(s) for {address[:8]}...: {cells}")
 
     def tick(self) -> None:
         """Runs one step: drain click events, plan, send, wait for arrival.
 
         No pipelining (a manual click can land mid-travel and must be
-        reflected in the very next sim.step(), so pre-computing ahead would
-        either miss it or be thrown away).
+        reflected in the very next advance_time_step(), so pre-computing ahead
+        would either miss it or be thrown away).
         """
         self._step += 1
         events = self.listener.drain_clicks()
@@ -212,16 +231,19 @@ class MRTASession:
         for event in events:
             self.handle_click(event)
 
-        if not self.fleet.tasks and not events:
+        if not any(target is not None for target in self._active_target.values()) and not events:
             time.sleep(self.idle_sleep)
             return
 
         try:
-            self.sim.step()
+            self.engine.advance_time_step()
         except ValueError as e:
             print(f"  ⚠ planning error, skipping tick: {e}")
             time.sleep(self.idle_sleep)
             return
+
+        for agent in self.agents:
+            self._advance_chain(agent)
 
         targets = {addr: self.agents[i].position for i, addr in enumerate(self.addresses)}
         moved = {addr: cell for addr, cell in targets.items() if cell != self._prev[addr]}
@@ -257,18 +279,19 @@ class MRTASession:
         except KeyboardInterrupt:
             print("\nStopping (Ctrl+C)...")
 
-    def _cancel_agent_tasks(self, agent_id: int) -> None:
-        """Fails (not drops) that agent's pending/assigned tasks, so a
-        re-click overrides in-flight navigation instead of queuing behind
-        it -- matching the browser's own PUT, which already overwrites the
-        bot's waypoint list unconditionally the instant it lands."""
-        for task in self.fleet.tasks:
-            if task.state not in (TaskState.PENDING, TaskState.ASSIGNED):
-                continue
-            targets_this_agent = (
-                task.eligible == frozenset({agent_id})
-                or (task.assignee is not None and task.assignee.agent_id == agent_id)
-            )
-            if targets_this_agent:
-                task.state = TaskState.FAILED
-                task.assignee = None
+    def _advance_chain(self, agent: Agent) -> None:
+        """Called once per agent after every advance_time_step(). An agent that
+        just reached its active target either gets the next cell in its pending
+        waypoint chain (another set_target() call, exactly what a fresh operator
+        click would do) or is left parked -- LifelongGoalOrchestrator clears its
+        own target slot for it on the next tick's assign_missions() once it
+        observes position == target, same as demo_lifelong.py's own pattern."""
+        if self._active_target.get(agent.agent_id) != agent.position:
+            return
+        chain = self._pending_chain[agent.agent_id]
+        if chain:
+            next_cell = chain.popleft()
+            self._orchestrator.set_target(agent.agent_id, next_cell)
+            self._active_target[agent.agent_id] = next_cell
+        else:
+            self._active_target[agent.agent_id] = None

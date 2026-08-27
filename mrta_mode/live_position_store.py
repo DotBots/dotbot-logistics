@@ -14,7 +14,7 @@ import time
 
 import requests
 
-from core import Position
+from core import Coordinates2D
 
 from .grid_state_manager import GridStateManager
 
@@ -36,7 +36,7 @@ class LivePositionStore:
 
     def wait_until_all_arrived(
         self,
-        targets: dict[str, Position],
+        targets: dict[str, Coordinates2D],
         threshold: int,
         timeout: float,
         settle_s: float,

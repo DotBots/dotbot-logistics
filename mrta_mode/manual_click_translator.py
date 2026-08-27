@@ -5,7 +5,7 @@ this script sent itself.
 
 import requests
 
-from core import Position
+from core import Coordinates2D
 
 from .click_event import ClickEvent
 from .grid_state_manager import GridStateManager
@@ -14,7 +14,7 @@ from .grid_state_manager import GridStateManager
 class ManualClickTranslator:
     def __init__(self, gsm: GridStateManager):
         self._gsm = gsm
-        self._commanded: dict[str, Position] = {}
+        self._commanded: dict[str, Coordinates2D] = {}
 
     def seed_commanded(self, dotbots_raw: list[dict]) -> None:
         """Seeds `commanded` from each bot's live REST waypoints so leftovers
@@ -25,14 +25,14 @@ class ManualClickTranslator:
             if cells:
                 self._commanded[bot["address"]] = cells[-1]
 
-    def record_commanded(self, address: str, cell: Position) -> None:
+    def record_commanded(self, address: str, cell: Coordinates2D) -> None:
         self._commanded[address] = cell
 
-    def translate(self, waypoints_mm: list[dict], current: Position) -> list[Position]:
+    def translate(self, waypoints_mm: list[dict], current: Coordinates2D) -> list[Coordinates2D]:
         """Converts a waypoint chain to cells and drops adjacent duplicates
         and a leading no-op -- trims the one wasted dispatch tick an
         mm-rounding collision would cost."""
-        result: list[Position] = []
+        result: list[Coordinates2D] = []
         prev = current
         for cell in self._waypoints_to_cells(waypoints_mm):
             if cell != prev:
@@ -67,7 +67,7 @@ class ManualClickTranslator:
                 events.append(ClickEvent(address=address, waypoints_mm=waypoints, source="reconcile"))
         return events
 
-    def _waypoints_to_cells(self, waypoints_mm: list[dict]) -> list[Position]:
+    def _waypoints_to_cells(self, waypoints_mm: list[dict]) -> list[Coordinates2D]:
         return [
             self._gsm.mm_to_cell(wp["x"], wp["y"])
             for wp in waypoints_mm
