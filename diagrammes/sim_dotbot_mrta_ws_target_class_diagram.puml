@@ -1,6 +1,6 @@
 @startuml sim_dotbot_mrta_ws_target_class_diagram
 
-title sim_dotbot_mrta.py — target design: import MAPF_Simulation, incl. its Lifelong orchestrator
+title sim_dotbot_mrta.py — target design: import MAPF_Simulation's core + pibt (WorldEngine, LifelongGoalOrchestrator)
 
 skinparam classAttributeIconSize 0
 skinparam classFontSize 13
@@ -17,20 +17,22 @@ note as N0
   1) WS-driven arrival (mrta_mode package) -- *implemented*, see the
      commit that extracted mrta_mode/ and AGENT.md's mrta_mode section.
   2) Retire the vendored simulation/ copy in favour of importing
-     MAPF_Simulation directly -- **INVALIDATED, 2026-08-27**. Everything
-     below this point in the "MAPF_Simulation (external repo...)" package
-     -- pibt/, PIBTPlanner, AssignmentManifest, StepOutcome,
-     LifelongGoalOrchestrator, and the claim that algo/client/mrta/report
-     were removed upstream -- was never checked against the actual
-     upstream checkout and turned out to be fiction. The real
-     /home/dok/MAPF_Simulation (branch MRTA) still has algo/, client/,
-     mrta/, report/, with the SAME class names the vendored copy uses
-     (PIBTCoordinator, DispatchIntent, FleetManager, QueueTaskSource,
-     EasiestAllocator...). No pibt/, no export/, no LifelongGoalOrchestrator
-     exist anywhere in it. See Roadmap.md §0 for the corrected account and
-     what a real reconnection would need. Nothing below the note on
-     PathPlanner in the external-repo package should be trusted without
-     re-deriving it from that checkout first.
+     MAPF_Simulation directly -- **CONFIRMED, 2026-08-27, validated against
+     the actively-maintained clone**. An earlier pass on this same day
+     (commit 32dfe2f in dotbot-logistics) marked this target
+     "INVALIDATED" after checking /home/dok/MAPF_Simulation (branch MRTA)
+     and finding no pibt/, no export/ -- that was checking a SECOND,
+     stale clone, 78 commits behind. The clone the user actively
+     maintains, ~/3A/projets/MAPF_Simulation (branch develop, tip 736c757,
+     "expose core and pibt as an installable package"), really does have
+     core/ + pibt/ + export/, no algo/client/mrta/report, and a
+     root pyproject.toml (`name = "mapf-simulation"`,
+     `include = ["core*", "pibt*"]`) making it pip-installable as a git
+     dependency -- exactly what the original (pre-32dfe2f) draft of this
+     diagram assumed, for the right reasons even if unverified at the
+     time. Lesson: two clones of the same remote existed on this machine
+     at different commits; "re-verify against the code" has to mean the
+     clone actually referenced, not any clone with a matching name.
 end note
 
 package "mrta_mode (WS-driven position, REST as fallback only -- implemented)" #E8F5E9 {
@@ -43,9 +45,9 @@ package "mrta_mode (WS-driven position, REST as fallback only -- implemented)" #
         + fetch_dotbots() : list[dict]        <GET /controller/dotbots>
         + fetch_map_size() : (int, int)       <GET /controller/map_size>
         + set_map_size(width_mm, height_mm) : void
-        + mm_to_cell(x_mm, y_mm) : Position
+        + mm_to_cell(x_mm, y_mm) : Coordinates2D
         + cell_to_mm(pos) : (float, float)
-        + resolve_conflicts(positions) : dict[str, Position]
+        + resolve_conflicts(positions) : dict[str, Coordinates2D]
     }
     note bottom of GridStateManager
       No longer the step-loop's position source.
@@ -53,7 +55,9 @@ package "mrta_mode (WS-driven position, REST as fallback only -- implemented)" #
       list) and by ControllerStatusListener as the
       degraded-mode fallback when the WS link is down
       -- same GET /controller/dotbots as before, just
-      off the hot path.
+      off the hot path. Position -> Coordinates2D rename
+      only (from core import Position -> Coordinates2D);
+      shape (frozen, hashable, .x/.y) is unchanged.
     end note
 
     class ControllerStatusListener <<new, replaces WaypointWatcher — WS client>> {
@@ -79,11 +83,11 @@ package "mrta_mode (WS-driven position, REST as fallback only -- implemented)" #
     end note
 
     class LivePositionStore <<new>> {
-        - _positions : dict[str, Position]
+        - _positions : dict[str, Coordinates2D]
         - _updated : dict[str, Event]
         --
         + update(address, position_mm) : void
-        + snapshot() : dict[str, Position]
+        + snapshot() : dict[str, Coordinates2D]
         + wait_until_all_arrived(targets, timeout) : set[str]
     }
     note bottom of LivePositionStore
@@ -95,15 +99,15 @@ package "mrta_mode (WS-driven position, REST as fallback only -- implemented)" #
       net principle as ManualClickTranslator.reconcile().
     end note
 
-    class ManualClickTranslator <<unchanged>> {
-        - _commanded : dict[str, Position]
+    class ManualClickTranslator <<unchanged shape, Position -> Coordinates2D>> {
+        - _commanded : dict[str, Coordinates2D]
         --
         + seed_commanded(dotbots_raw) : void
         + record_commanded(address, cell) : void
-        + translate(waypoints_mm) : list[Position]
+        + translate(waypoints_mm, current) : list[Coordinates2D]
         + is_self_commanded(event) : bool
-        + reconcile() : list[dict]              <-- REST fallback,
-                                                      GridStateManager.fetch_dotbots()
+        + reconcile() : list[ClickEvent]         <-- REST fallback,
+                                                       GridStateManager.fetch_dotbots()
     }
 
     class WaypointCommandClient <<renamed from DotBotNavigator — write-path only>> {
@@ -121,27 +125,50 @@ package "mrta_mode (WS-driven position, REST as fallback only -- implemented)" #
 
     class MRTASession <<the "activatable mode" object>> {
         + engine : WorldEngine
-        + orchestrator : LifelongGoalOrchestrator
         + agents : list[Agent]
+        - _orchestrator : LifelongGoalOrchestrator
+        - _active_target : dict[int, Coordinates2D | None]
+        - _pending_chain : dict[int, deque[Coordinates2D]]
         --
         + start() : void
         + stop() : void
-        + handle_click(address, waypoints_mm, source) : void
-        + tick(step) : void
+        + handle_click(event: ClickEvent) : void
+        + tick() : void
+        - _advance_chain(agent_id) : void
     }
     note bottom of MRTASession
-      tick() now calls LivePositionStore.wait_until_all_arrived()
-      instead of WaypointCommandClient.wait_until_all_arrived() --
-      same call site, event-driven instead of polling.
+      tick() calls LivePositionStore.wait_until_all_arrived(),
+      event-driven instead of polling -- unchanged from before
+      this reconnection.
 
-      handle_click()'s body is exactly the open question in
-      LifelongGoalOrchestrator's note: push into goal_pool, or call a
-      new set_goal(agent_id, position) -- not decided, so left
-      unspecified here rather than drawn as settled.
-      _cancel_agent_tasks() (FleetManager-era) has no equivalent yet
-      either: cancelling one agent's in-flight goal under (b) is just
-      another set_goal() call; under (a) there is nothing to cancel,
-      a pool entry has no owner to revoke it from.
+      **handle_click() -- settled, no longer open.** Translates the
+      waypoint chain to cells via ManualClickTranslator (unchanged).
+      Empty chain (Stop-nav, or nothing to do) -> cancel: calls
+      _orchestrator.set_target(agent_id, agent.position) so
+      assign_missions() clears the slot next tick (position == target),
+      and drops any queued chain. Non-empty chain -> calls
+      _orchestrator.set_target(agent_id, cells[0]) (overwrites any
+      in-flight target unconditionally -- LifelongGoalOrchestrator's
+      own contract, so a re-click needs no separate cancel step) and
+      stores cells[1:] in _pending_chain[agent_id].
+
+      **Multi-hop waypoint chains -- new, MRTASession's own job.**
+      LifelongGoalOrchestrator holds exactly one mutable target slot
+      per agent, no queue (unlike the old FleetManager/Task model,
+      where each chain cell became its own queued Task). So the chain
+      is now owned locally: after each advance_time_step(), for every
+      agent whose position == _active_target[agent_id] and whose
+      _pending_chain[agent_id] is non-empty, _advance_chain() pops the
+      next cell and calls set_target() again. _active_target mirrors
+      the orchestrator's private _target dict (read-only, kept in sync
+      by MRTASession itself since it is the only caller of
+      set_target()) -- used both for this and to replace the old
+      "if not self.fleet.tasks: sleep(idle)" idle check (now:
+      "if not any(_active_target.values()) and not events: sleep").
+
+      **Cancel-on-empty-waypoint (Button.md fix C.3) -- same
+      mechanism as the rest of cancel**, not a separate code path:
+      set_target(agent_id, agent.position) either way.
     end note
 
     class MRTACli <<kept, thinned>> {
@@ -150,7 +177,7 @@ package "mrta_mode (WS-driven position, REST as fallback only -- implemented)" #
     }
 }
 
-package "MAPF_Simulation (external repo, imported -- core + pibt, incl. Lifelong mode)" #EAF4FF {
+package "MAPF_Simulation (external repo, pip-installed -- core + pibt)" #EAF4FF {
     class WorldEngine
     class Grid2D
     class Agent
@@ -169,45 +196,46 @@ package "MAPF_Simulation (external repo, imported -- core + pibt, incl. Lifelong
 }
 note bottom of PathPlanner
   Replaces the vendored simulation/ copy this diagram used to show as
-  "unchanged": that copy is retired, this package is imported instead
-  from ~/3A/projets/MAPF_Simulation (git@github.com:RasdaCorentin/
-  MAPF_Simulation). No FleetManager, QueueTaskSource, Task, Allocator
-  or PIBTCoordinator survive on the other side of this import -- see N0.
+  "unchanged": that copy is retired (dotbot-logistics commit d4e053b).
+  Imported instead from the pip-installed `mapf-simulation` package
+  (pyproject.toml on ~/3A/projets/MAPF_Simulation's develop branch,
+  git@github.com:RasdaCorentin/MAPF_Simulation, `include = ["core*",
+  "pibt*"]`) -- top-level `import core` / `import pibt`, no sys.path
+  insert needed once installed. No FleetManager, QueueTaskSource, Task,
+  Allocator or PIBTCoordinator survive on the other side of this import:
+  `core.Agent`/`core.Grid2D`/`core.WorldEngine` replace
+  `Agent`/`Grid`/`Simulation`; `pibt.PIBTPlanner` replaces
+  `PIBTCoordinator`; `core.Coordinates2D` replaces `Position`.
 end note
 note bottom of LifelongGoalOrchestrator
-  **The actual replacement for the allocation layer.** assign_missions()
-  draws the next entry from a shared, rotating goal_pool the instant an
-  agent is standing on its current goal (FCFS, _next_goal() pops front,
-  pushes back at end) -- imported as-is, nothing to reimplement.
+  **The actual replacement for the allocation layer -- confirmed,
+  imported as-is, nothing reimplemented upstream.** One mutable target
+  slot per agent (`_target: dict[int, Coordinates2D | None]`), written
+  only through set_target(agent_id, position) -- no shared pool, no
+  arbitration between agents, because there is nothing to arbitrate:
+  the caller that owns the goal source decides per agent. Per its own
+  docstring, this class was written *for this exact use case*
+  ("an operator click translated by sim_dotbot_mrta.py's
+  ManualClickTranslator, the use case this class actually serves").
 
-  Two deliberate scope cuts (its own docstring: "no eligibility classes,
-  no pluggable allocation strategy, no stall watchdog") collide with
-  what mrta_mode's click-to-target currently means, and need resolving
-  before handle_click() can wire into this class:
+  The two scope cuts the pre-32dfe2f draft of this note worried about
+  are both resolved by set_target()'s shape, not by anything MRTASession
+  still has to build:
+  1. **Eligibility** -- moot. A click already means "this one bot" by
+     construction: set_target() takes an explicit agent_id, there is no
+     pool to draw the wrong agent from.
+  2. **Idle/parked state** -- built in. assign_missions() clears an
+     agent's slot to None the instant position == target and omits it
+     from goals; it stays parked until set_target() is called again.
+     Matches MRTA's "every bot starts parked" invariant exactly, no
+     workaround needed.
 
-  1. No eligibility -- a click currently means "this ONE bot, this
-     cell" (eligible=frozenset({agent_id})). LifelongGoalOrchestrator
-     has no notion of "for this agent only": any agent standing on its
-     goal takes whatever is next in the pool. Fixing this needs either
-     (a) push the clicked cell into goal_pool and accept the semantic
-     change -- a click becomes "someone should go here", not "this bot
-     goes here" -- or (b) a small new public method upstream,
-     set_goal(agent_id, position), writing straight into _current_goal
-     and bypassing the pool for that one agent -- keeps today's
-     per-bot semantics, costs one method on a class this session's user
-     also maintains.
-  2. No idle/parked state -- assign_missions() ALWAYS redraws from the
-     pool once `position == goal`, there is no "goalless, waiting for
-     an operator" state. MRTA's current invariant ("every bot starts
-     parked, does nothing until clicked", AGENT.md) has no equivalent
-     here. (b) above also closes this: an agent with nothing set via
-     set_goal() needs a default of "stay at current position", which
-     means bypassing _next_goal() for it entirely rather than seeding
-     goal_pool with a dummy per-agent entry.
-
-  Neither cut is a bug -- both are the deliberate trade-off documented
-  in pibt/AGENT.md for the FCFS lifelong regime. This is the open
-  design decision the reconnection now forces, not yet made.
+  Requires PIBTPlanner's GoalReachedPolicy.TRANSIENT (its default): an
+  agent demoted to -inf priority on arrival must be undemoted the
+  instant it is re-targeted. What is NOT built in, and is MRTASession's
+  job (see its note): multi-hop waypoint chains (one slot, no queue)
+  and preventing two agents being set to the same target -- both
+  explicitly left to the caller per pibt/AGENT.md.
 end note
 
 MRTASession *-- GridStateManager
