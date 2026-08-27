@@ -197,12 +197,24 @@ class MRTASession:
             return  # our own PIBT-sent waypoint, echoed back
 
         agent = self._agent_by_addr[address]
+
+        if not event.waypoints_mm:
+            # An empty waypoint list is the operator's "Stop nav" (Button.md
+            # C.3). MRTA never sends [], so this is always the operator: cancel
+            # the agent's in-flight target. set_target(agent, current position)
+            # makes the next assign_missions() see position == target and clear
+            # the slot itself -- the same path LifelongGoalOrchestrator uses for
+            # an ordinary arrival.
+            self._orchestrator.set_target(agent.agent_id, agent.position)
+            self._active_target[agent.agent_id] = None
+            self._pending_chain[agent.agent_id].clear()
+            print(f"  -> stop nav for {address[:8]}...: target cancelled")
+            return
+
         cells = self.translator.translate(event.waypoints_mm, agent.position)
         if not cells:
-            # Button.md fix C.3 (not applied here): an empty waypoint list is the
-            # operator's "Stop nav" and should cancel the agent's in-flight target
-            # instead of being ignored. Left as today's behaviour -- out of scope
-            # for this reconnection pass.
+            # Non-empty payload that dedups to nothing (a click on the bot's
+            # own cell): nothing to do.
             return
 
         # set_target() overwrites any target already set for this agent

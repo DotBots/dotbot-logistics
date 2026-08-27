@@ -142,7 +142,9 @@ class ControllerStatusListener:
             return
 
         waypoints = data.get("lh2_waypoints")
-        if waypoints:
+        if waypoints is not None:
+            # An empty list is the operator's "Stop nav" (Button.md C.3) and
+            # must reach MRTASession.handle_click(), not be dropped here.
             self._click_queue.put(ClickEvent(address=address, waypoints_mm=waypoints, source="ws"))
 
         position = data.get("lh2_position")
