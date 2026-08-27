@@ -5,36 +5,68 @@ collision-free multi-robot navigation on a discrete grid.
 
 📖 **Documentation:** a three-level reproduction guide (algorithm → simulator → real
 hardware) lives under [`docs/`](docs/index.md) and builds as a MkDocs site (`mkdocs serve`).
+For the full project map, contributing conventions, and roadmap, see [`AGENT.md`](AGENT.md).
 
-> ⚠️ **Every script below is currently broken.** The vendored PIBT/MRTA engine
-> (`simulation/`) was removed on 2026-08-27; reconnecting to the real upstream engine is
-> deliberate future work, not done yet. See `AGENT.md`'s "Current known inconsistencies" and
-> `Roadmap.md` §0. None of the commands in this README will run until that lands.
+## Status
+
+The vendored PIBT/MRTA engine this project used to bundle at `simulation/` was removed on
+2026-08-27. `sim_dotbot_mrta.py` has since been **reconnected** to the real engine (the
+`mapf-simulation` package, pulled in by `requirements.txt`) and is **verified working** — see
+"Getting started" below. `sim_pibt.py`, `sim_many_pibt.py`, `sim_dotbot_pibt.py`,
+`real_dotbot_pibt.py` and `real_dotbot_pibt_batch.py` are **still broken**: same engine, not yet
+ported. See [`AGENT.md`](AGENT.md)'s "Current known inconsistencies" for the up-to-date list.
+
+## Getting started
+
+This repo has no committed virtual environment — set one up once:
+
+```bash
+git clone https://github.com/DotBots/dotbot-logistics.git
+cd dotbot-logistics
+python3 -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+```
+
+`requirements.txt` installs everything needed: `pydotbot[calibrate]` (the DotBot controller,
+simulator, and web UI), `requests`, `pygame` (Level 0 viewer only), `websockets` (the MRTA
+click-detection listener), and `mapf-simulation` — the PIBT/MRTA engine itself, pulled in as a
+git dependency (`git+https://github.com/RasdaCorentin/MAPF_Simulation.git@develop`), no separate
+checkout needed.
+
+Then, to see it actually move a robot — this exact sequence was verified end-to-end on
+2026-08-27:
+
+```bash
+# terminal 1 — start the simulated swarm (10 bots on a 5x5 grid, 2000x2000 mm)
+dotbot run simulator --map-size 2000x2000 --simulator-init-state simulator_init_state.toml
+
+# terminal 2 — start MRTA mode
+python sim_dotbot_mrta.py
+```
+
+Open `http://localhost:8000/PyDotBot/` in a browser, select a bot, click a point on the map, click
+"Apply waypoints" — the existing, unmodified web UI flow. `sim_dotbot_mrta.py` picks up that
+click, plans a PIBT path to the clicked cell, and drives the bot there step by step while routing
+around every other bot. Bots nobody has clicked stay parked. `Ctrl+C` to stop.
+
+For real hardware (Level 2) instead of the simulator, see
+[`docs/level-2-real.md`](docs/level-2-real.md) for the MQTT broker / gateway / LH2 calibration
+bring-up — note that the real-hardware scripts (`real_dotbot_pibt.py`,
+`real_dotbot_pibt_batch.py`) are currently in the broken set above.
 
 ## Contents
 
 | Path | Level | Description |
 |------|-------|-------------|
-| `sim_pibt.py` | 0 | Interactive pygame viewer — animates PIBT on a small grid (edit-in-file scenario). |
-| `sim_many_pibt.py` | 0 | Headless benchmark — PIBT sweep over grid resolution × N × seeds, writes a CSV. |
-| `sim_dotbot_pibt.py` | 1 | Drives the DotBot **simulator** through the controller API (parallel + pipelined). |
-| `sim_dotbot_mrta.py` | 1 | Persistent — click a bot then a cell in the existing web UI, PIBT drives it there while others carry on. |
-| `real_dotbot_pibt.py` | 2 | Drives **real** DotBots, one waypoint per bot per step, sync barrier between steps. |
-| `real_dotbot_pibt_batch.py` | 2 | Parametrised batch test (`--bots N --runs M`) writing L1 metrics. |
+| `sim_pibt.py` | 0 | Interactive pygame viewer — animates PIBT on a small grid (edit-in-file scenario). **Broken.** |
+| `sim_many_pibt.py` | 0 | Headless benchmark — PIBT sweep over grid resolution × N × seeds, writes a CSV. **Broken.** |
+| `sim_dotbot_pibt.py` | 1 | Drives the DotBot **simulator** through the controller API (parallel + pipelined). **Broken.** |
+| `sim_dotbot_mrta.py` | 1 | Persistent — click a bot then a cell in the existing web UI, PIBT drives it there while others carry on. **Works.** |
+| `real_dotbot_pibt.py` | 2 | Drives **real** DotBots, one waypoint per bot per step, sync barrier between steps. **Broken.** |
+| `real_dotbot_pibt_batch.py` | 2 | Parametrised batch test (`--bots N --runs M`) writing L1 metrics. **Broken.** |
+| `mrta_mode/` | 1 | Collaborator classes behind `sim_dotbot_mrta.py`'s MRTA mode — self-contained, see `AGENT.md`. |
 | `log/` | — | Experiment outputs — `raw_logs/` and metrics CSVs. |
-| `docs/` | — | Documentation — roadmap, experiment reports, Inria hand-offs. |
-
-## Installation
-
-```bash
-pip install -r requirements.txt
-```
-
-`requirements.txt` pulls `pydotbot[calibrate]`, `requests`, `pygame` (only used by the Level 0
-viewer), `scipy` (only used by the still-stubbed `KDTreeGreedyAllocator`), and `websockets`
-(only used by `sim_dotbot_mrta.py`'s click-detection listener). The PIBT/MRTA engine these scripts
-depend on (formerly bundled at `simulation/`) is not currently installable at all — see the
-warning at the top of this file.
+| `docs/` | — | MkDocs site — level-0/1/2 guides, installation, contributing. |
 
 ---
 
@@ -117,7 +149,8 @@ UI's own existing flow). The script detects that click over the controller's Web
 channel, snaps it to the nearest grid cell, and hands it to PIBT as a task restricted to that one
 bot — it then navigates there step by step, avoiding every other bot being driven the same way.
 Untouched bots simply stay put. Re-clicking a bot that's still mid-route redirects it immediately
-instead of queuing behind the old target. Runs until `Ctrl+C`.
+instead of queuing behind the old target. Runs until `Ctrl+C`. See "Getting started" above for the
+full working sequence.
 
 ```bash
 python sim_dotbot_mrta.py              # persistent run — click bots in the browser to drive them
@@ -186,47 +219,6 @@ python real_dotbot_pibt_batch.py --bots 4 --runs 10  # 4 bots, 10 runs
 
 ---
 
-## Quick start
-
-### 1. Start the DotBot simulator
-
-```bash
-dotbot run simulator \
-    --map-size 2000x2000 \
-    --simulator-init-state simulator_init_state.toml
-```
-
-> `simulator_init_state.toml` defines the initial bot positions (10 bots on the centres of
-> a 5×5 grid, cell = 400 mm, map = 2000×2000 mm). For the 8×8 layout use
-> `simulator_init_state_8x8.toml` together with `--map-cells 8`.
-> See the [pydotbot documentation][pydotbot-doc] for an example.
-
-### 2. Run the simulator demo
-
-```bash
-python sim_dotbot_pibt.py
-python sim_dotbot_pibt.py --dry-run
-```
-
-### 2b. Or drive it manually via the web UI (MRTA mode)
-
-```bash
-python sim_dotbot_mrta.py
-```
-
-Then open `http://localhost:8000/PyDotBot/`, select a bot, click a point on the map, and click
-"Apply waypoints" — PIBT takes it from there. `Ctrl+C` to stop.
-
-### 3. Run the real-hardware demo
-
-See [Level 2](docs/level-2-real.md) for the full hardware bring-up (MQTT broker, gateway,
-LH2 calibration), then:
-
-```bash
-python real_dotbot_pibt.py --dry-run --seed 1
-python real_dotbot_pibt.py --seed 1 --steps 20
-```
-
 ## Grid ↔ mm mapping
 
 ```
@@ -250,45 +242,32 @@ Both: one waypoint/bot/step, sync barrier on real positions
 with a per-step timeout, threshold = 100 mm
 ```
 
+## Troubleshooting
+
+### WSL not detecting the TTY
+
+If you have performed the `usbipd` attach command but your WSL instance is not detecting the
+device (e.g., no `/dev/ttyUSB0` or `/dev/ttyACM0` appears), check the following, in order:
+
+1. **Install usbipd on Windows** (PowerShell as Admin):
+   ```powershell
+   winget install --source winget dorssel.usbipd-win
+   ```
+2. **List devices** (PowerShell):
+   ```powershell
+   usbipd list
+   ```
+3. **Bind the device** (PowerShell as Admin — authorizes Windows to share it with WSL):
+   ```powershell
+   usbipd bind --busid <BUSID>
+   ```
+4. **Attach to WSL** (PowerShell):
+   ```powershell
+   usbipd attach --wsl --busid <BUSID>
+   ```
+
 ## License
 
 [BSD 3-Clause](LICENSE)
 
 [pydotbot-doc]: https://pydotbot.readthedocs.io/en/latest/
-
-#### Debug 
-### Debugging: WSL Not Detecting TTY
-
-If you have performed the `usbipd` attach command but your WSL instance is not detecting the device (e.g., no `/dev/ttyUSB0` or `/dev/ttyACM0` appears), follow these steps to troubleshoot:
-
-## Initial Setup Checklist
-
-Ensure the following commands have been executed correctly:
-
-* **Install usbipd on Windows (PowerShell as Admin):**
-```powershell
-winget install --source winget dorssel.usbipd-win
-
-```
-
-
-* **List Devices (PowerShell):**
-```powershell
-usbipd list
-
-```
-
-
-* **Bind the Device (PowerShell as Admin):**
-*This authorizes Windows to share the device with WSL.*
-```powershell
-usbipd bind --busid <BUSID>
-
-```
-
-
-* **Attach to WSL (PowerShell):**
-```powershell
-usbipd attach --wsl --busid <BUSID>
-
-```
