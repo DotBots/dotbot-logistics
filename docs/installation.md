@@ -36,15 +36,15 @@ pip install -r requirements.txt
 `requirements.txt` pulls `pydotbot[calibrate]`, `requests`, and `pygame` (the last one is
 only used by the Level 0 viewer).
 
-The repository bundles a small standalone PIBT engine under `simulation/`. The scripts add
-it to `sys.path` automatically, so you do not need to install it separately. If you want to
-run the engine on its own, it has its own `simulation/requirements.txt`.
+!!! warning "Currently broken"
+    The PIBT engine these scripts depend on (formerly bundled at `simulation/`) was removed
+    on 2026-08-27 and has no replacement installed yet — see the root `AGENT.md`'s "Current
+    known inconsistencies" and `Roadmap.md` §0. None of the scripts below will run.
 
 ## What's in the box
 
 | Path | Used at | Purpose |
 |------|---------|---------|
-| `simulation/` | Level 0 | Standalone PIBT engine (`core/`, `algo/pibt.py`) + renderers. |
 | `sim_pibt.py` | Level 0 | Interactive pygame viewer (edit-in-file scenario). |
 | `sim_many_pibt.py` | Level 0 | Headless PIBT benchmark sweep. |
 | `sim_dotbot_pibt.py` | Level 1 | Drives the DotBot **simulator** through the controller API. |

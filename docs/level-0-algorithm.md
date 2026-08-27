@@ -1,5 +1,10 @@
 # Level 0 — Run a PIBT to see how it works
 
+!!! warning "Currently broken"
+    `sim_pibt.py` and `sim_many_pibt.py` depend on a PIBT engine (formerly vendored at
+    `simulation/`) that was removed on 2026-08-27 — see the root `AGENT.md`'s "Current known
+    inconsistencies" and `Roadmap.md` §0. Neither script runs today.
+
 The first level is the **algorithm alone**, on an abstract grid. There is no robot, no
 controller, no radio — agents are dots that occupy cells, and PIBT decides where each one
 moves next so that two of them never land on the same cell. This is the cheapest, fastest
@@ -35,16 +40,11 @@ python sim_pibt.py -d     # debug mode (hides the pygame support prompt)
 | `←` | step back |
 | `Q` / `Esc` | quit |
 
-A minimal, non-PIBT example (random-walk coordinator, useful as a template for your own
-algorithm) lives in `simulation/main.py`:
-
-```bash
-python simulation/main.py
-```
-
-To plug in your own planner, subclass `Coordinator` and implement `plan()` — see
-`simulation/algo/random_walk.py` for the smallest possible example, and the docstring at
-the top of `sim_pibt.py` for the renderer options.
+The removed `simulation/` engine used to ship a minimal, non-PIBT example (random-walk
+coordinator, a template for your own algorithm) at `simulation/main.py`, and a `Coordinator`
+interface to subclass for a custom planner — both gone along with the rest of the package
+(see the warning above). The docstring at the top of `sim_pibt.py` still documents the
+renderer options.
 
 ## Measure it — the headless benchmark
 

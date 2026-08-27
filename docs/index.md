@@ -9,9 +9,16 @@ shared warehouse floor without colliding.
 [![Architecture: mm world (DotBot API) ↔ cell world (PIBT)](assets/arch_overview.png)](contributing/architecture.md)
 
 *Architecture overview — the boundary between the **mm world** (the DotBot controller's
-REST API, everything in millimetres) and the **cell world** (`simulation/`, everything in
-integer grid cells), bridged by `GridStateManager`. See
+REST API, everything in millimetres) and the **cell world** (the PIBT/MRTA engine, everything
+in integer grid cells), bridged by `GridStateManager`. See
 [Contributing → Architecture](contributing/architecture.md) for the detailed diagrams.*
+
+!!! warning "Currently broken"
+    The vendored engine this site describes (`simulation/`) was removed on 2026-08-27;
+    every script below is non-functional until reconnection to the real upstream engine is
+    scoped and done (see the root `AGENT.md`'s "Current known inconsistencies" and
+    `Roadmap.md` §0). The diagrams and package paths on this site describe that removed
+    engine and are kept for reference, not as a guide to something you can run today.
 
 ## What this documentation is for
 
