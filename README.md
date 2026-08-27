@@ -9,9 +9,9 @@ This repo is the **bridge**: it wires the [MAPF_Simulation][mapf] PIBT engine to
 controller's REST + WebSocket API. The planning engine itself is a separate package
 (`mapf-simulation`, installed automatically). The DotBot side (`pydotbot`) is also separate.
 
-> **Scope note.** The only thing you run here is **MRTA mode**, via `mrta_server.py`. The older
-> Level 0/1/2 batch and demo scripts were removed on 2026-08-27; three unported ones are parked
-> in `test_scripts/` for reference. See [`AGENT.md`](AGENT.md) for the full project map.
+> **Scope note.** The only thing you run here is **MRTA mode**, via `mrta_server.py`. A few
+> unported older scripts sit in `test_scripts/` as porting references and are not runnable
+> as-is. See [`AGENT.md`](AGENT.md) for the full project map.
 
 ---
 
@@ -57,12 +57,17 @@ source venv/bin/activate          # bash/zsh   —   fish: source venv/bin/activ
 pip install -r requirements.txt
 ```
 
-Then, to drive it from the console, replace the released `pydotbot` with the branch that carries
-the `/mrta/*` proxy:
+Then, to drive it from the console, replace the released `pydotbot` with the PyDotBot branch that
+carries the `/mrta/*` proxy (`feat/mrta-mode-toggle`):
 
 ```bash
-pip install -e ../dotbot-workspace/repos/PyDotBot   # branch feat/mrta-mode-toggle
+git clone https://github.com/DotBots/PyDotBot.git
+git -C PyDotBot checkout feat/mrta-mode-toggle
+pip install -e PyDotBot
 ```
+
+(Already have a PyDotBot checkout somewhere — e.g. `../dotbot-workspace/repos/PyDotBot`? Just
+`git checkout feat/mrta-mode-toggle` there and `pip install -e` that path instead.)
 
 `venv/` is gitignored; there is no committed environment.
 
@@ -74,12 +79,13 @@ Three things run side by side. Use three terminals (all with the venv activated)
 
 ### 1 — the DotBot swarm
 
-The simulator needs an init-state TOML describing at least two bots. This repo no longer ships
-one; the PyDotBot checkout has a sample, or point `--simulator-init-state` at your own.
+The simulator needs an init-state TOML describing at least two bots. This repo doesn't ship one;
+PyDotBot includes a sample (`simulator_init_state.toml`), or point `--simulator-init-state` at
+your own.
 
 ```bash
 dotbot run simulator --map-size 2000x2000 \
-    --simulator-init-state ../dotbot-workspace/repos/PyDotBot/simulator_init_state.toml \
+    --simulator-init-state PyDotBot/simulator_init_state.toml \
     --mrta-url http://localhost:8002
 ```
 
@@ -162,8 +168,8 @@ For the design in detail, read `diagrammes/sim_dotbot_mrta_ws_target_class_diagr
 | `mrta_server.py` | The entry point — CLI that serves the console-toggle HTTP API (`GET /status`, `POST /mode`) |
 | `mrta_mode/` | The MRTA-mode classes, one per file: `MRTASession`, the WS listener, the click translator, the position store, the REST clients, and `server.py`'s `MrtaMode` state machine. Self-contained — reusable without the rest of this repo. |
 | `diagrammes/` | PlantUML design diagrams |
-| `docs/` | MkDocs site (`mkdocs serve`) — three-level guides. **Partly stale**: still describes the removed batch scripts. |
-| `test_scripts/` | `sim_dotbot_pibt.py`, `sim_dotbot_right_left.py`, `sim_many_pibt.py` — archived, currently broken (they import the removed vendored engine), kept only as a porting reference. |
+| `docs/` | MkDocs site (`mkdocs serve`) — three-level guides. **Partly stale**: predates the current MRTA-only scope. |
+| `test_scripts/` | `sim_dotbot_pibt.py`, `sim_dotbot_right_left.py`, `sim_many_pibt.py` — porting references, not runnable as-is. |
 | `log/` | Experiment outputs from past runs |
 | [`AGENT.md`](AGENT.md) | Full project map, install/reuse guide for agents, contributing conventions, roadmap |
 
