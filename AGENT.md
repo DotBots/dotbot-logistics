@@ -156,7 +156,7 @@ carries the `/mrta/*` proxy. `venv/` is gitignored. `./venv/bin/python mrta_serv
 no `PYTHONPATH` trick.
 
 **The MRTA mode button is now wired end to end (2026-08-27), not yet verified live.** All of
-`Button.md`'s A/B/C/D shipped: the 3 restartability fixes (C.1 `ControllerStatusListener.stop()`
+the "MRTA mode toggle" section's A/B/C/D shipped: the 3 restartability fixes (C.1 `ControllerStatusListener.stop()`
 truly stops + joins the WS thread; C.2 `LivePositionStore.wait_until_all_arrived()` is
 interruptible; C.3 an empty waypoint list cancels the agent's target via
 `orchestrator.set_target(agent_id, agent.position)`), the HTTP server (`mrta_mode/server.py`'s
@@ -167,10 +167,11 @@ the PyDotBot `/mrta/*` proxy (in the `dotbot-workspace/repos/PyDotBot` checkout,
 `diagrammes/mrta_mode_button_architecture.puml` + `diagrammes/mrta_mode_button_state_machine.puml`.
 Checked so far (in the new `venv/`): unit-level state-machine walk (off → connecting →
 409-on-double-POST → off on connect failure), the proxy returning 502→"MRTA N/A" when nothing is
-behind it, and PyDotBot's 79 console-web tests. **Not** checked: the live path (`Button.md` "How to
-verify" step 4 — two bots routed around each other, OFF mid-travel stops them where they are).
-Still open: the drive-pad `move_raw`-vs-AUTO conflict from `Button.md`'s "What the button changes
-for everything else" (unaddressed — gate the pad or treat `move_raw` as a per-bot cancel).
+behind it, and PyDotBot's 79 console-web tests. **Not** checked: the live path ("The MRTA mode
+toggle" § "How to verify" step 4 — two bots routed around each other, OFF mid-travel stops them
+where they are). Still open: the drive-pad `move_raw`-vs-AUTO conflict from that section's "What
+the button changes for everything else" (unaddressed — gate the pad or treat `move_raw` as a
+per-bot cancel).
 
 **Driving is per-bot**, unchanged by the button: select one bot, click a point, "Apply waypoints"
 → one `PUT` → `handle_click()` → `set_target()` for that one `agent_id`. To move two bots, do it
@@ -344,6 +345,97 @@ or `DOTBOT_MRTA_URL`) so its `/mrta/*` proxy points at this server. The removed 
 `dotbot.toml` (MQTT broker, swarm id) and `DOTBOT_MQTT_USER` / `DOTBOT_MQTT_PASS` env vars — gone
 with them; recover from git history if the real-hardware path is rebuilt.
 
+## The MRTA mode toggle (console button)
+
+Folded in from the former root-level `Button.md` (2026-08-27, per the rule that root
+documentation in this repo lives in `AGENT.md` or `README.md` — nowhere else). Code comments in
+`mrta_mode/*.py` and the `diagrammes/mrta_mode_button_*.puml` files still cite this as `Button.md`
+and its four parts as **A/B/C/D**; those labels are kept below so the references resolve.
+
+An ON/OFF pill in the DotBot web console that turns this repo's MRTA mode on and off. With no
+server behind the proxy, `/mrta/status` returns 502/404, the console reads that as `unavailable`,
+and the pill renders greyed out as `MRTA N/A` — the intended resting state, not a failure: the
+console stays fully usable with no MRTA in the picture.
+
+**Status (2026-08-27): A, B, C, D all implemented; the live end-to-end check is still pending.**
+
+### The contract
+
+Two routes, same-origin under `/mrta` (PyDotBot's proxy strips the prefix, so this server sees
+`/status` and `/mode`):
+
+- **`GET /mrta/status`** → `{ "state", "bots", "detail" }`.
+  `state` is `off` | `connecting` | `on` | `stopping`. `bots` is the fleet size the running
+  session snapshotted (`null` when not running). `detail` is one short tooltip line. A fifth
+  value, `unavailable`, is **inferred by the console and must never be sent** — 404, 502 and an
+  unreachable host all collapse into it.
+- **`POST /mrta/mode`** `{ "on": bool }` → the same status object, `202`, returning the
+  *transition* state (`connecting` / `stopping`), not the settled one. Refuse with a non-2xx
+  while already transitioning — the console treats a refusal as "ask again next poll", which is
+  what stops a double-click from starting a second session on the same bots.
+
+The console polls status every 1.5 s. State lives in the MRTA process, never the browser: two
+consoles on one testbed must agree, and closing one must change nothing.
+
+### What was built (A–D, all shipped 2026-08-27)
+
+- **A — the `/mrta/*` proxy in PyDotBot.** `mrta_url` (default `http://localhost:8002`,
+  `--mrta-url` / `[run.controller] mrta_url` / `DOTBOT_MRTA_URL`) threaded through the controller;
+  `mrta_proxy` in `dotbot/server.py` mirrors the existing `swarmit_proxy` minus the SSE/streaming
+  machinery. In the `dotbot-workspace/repos/PyDotBot` checkout, branch `feat/mrta-mode-toggle`.
+  This breaks the "no changes to the PyDotBot controller" invariant the CLI held — the smallest
+  possible break: the controller learns one URL, nothing about MRTA.
+- **B — the MRTA HTTP server, here.** `mrta_mode/server.py`: `MrtaMode` owns the state machine +
+  session lifecycle (process-global under a `threading.Lock`); `build_app()` is a small FastAPI
+  app; `serve()` runs it on uvicorn. `connect()` and the `tick()` loop run on a worker thread,
+  never the serving loop. ON builds a *fresh* `MRTASession` (the fleet is snapshotted at
+  `connect()`), so OFF/ON is how you pick up bots that joined late — there is no resume.
+  `mrta_server.py` is the CLI. FastAPI/uvicorn are imported lazily so `mrta_mode/__init__.py`
+  still imports without them.
+- **C — three fixes that make `MRTASession` genuinely restartable** (a CLI starts one session; a
+  toggle starts many):
+  - **C.1** `ControllerStatusListener.stop()` truly stops the WS listener — it owns an explicit
+    event loop, `stop()` races `recv()` against a stop `Event` and joins the thread (5 s). No
+    more leaked thread + socket per OFF/ON.
+  - **C.2** `LivePositionStore.wait_until_all_arrived()` is interruptible — `interrupt()` sets a
+    flag and `notify_all()`s the `Condition` the wait parks on; OFF no longer takes ~4.3 s to
+    begin.
+  - **C.3** an empty waypoint list cancels instead of being ignored — `_handle_raw()` forwards
+    `lh2_waypoints == []`, and `handle_click()` treats an empty payload as the operator's "Stop
+    nav": `set_target(agent_id, agent.position)` + clear the pending chain. MRTA never sends an
+    empty list, so an empty list is always the operator.
+- **D — what OFF means: OFF stops the bots**, it does not let them coast to their last commanded
+  cell. `MrtaMode._stop_session()` runs a load-bearing order: **set stop flag → wake the arrival
+  wait (`session.stop()`) → join the tick thread → `PUT []` to every address in the snapshot**
+  (`MRTASession.halt_all()` + `WaypointCommandClient.send_stop()`). Clearing waypoints before the
+  join lets an in-flight parallel send re-arm the bots for one more cell. Clear exactly
+  `session.addresses` — a bot that joined after `connect()` was never driven by MRTA.
+
+### What the button changes for everything else
+
+While MRTA is on, a map click means "PIBT will route you there", not "drive straight there" —
+the one thing an operator must know; the tooltip says so. Two consequences, neither solved:
+
+- **Still open — the drive pad.** It sends `move_raw`, which puts the firmware back in MANUAL
+  while MRTA still believes it drives in AUTO; `agent.position` then diverges and PIBT plans on a
+  stale world. Fix: gate the pad while MRTA is on, or treat a `move_raw` on an MRTA bot as a
+  per-bot cancel.
+- Waypoint *missions* (a queued chain) already work — the translator turns the chain into one
+  target per cell via `MRTASession`'s `_pending_chain`.
+
+### How to verify
+
+1. `npm --prefix dotbot/console-web run typecheck && … run lint && … test` — 79 tests, 13 on the
+   toggle's state machine.
+2. `curl -o /dev/null -w '%{http_code}\n' localhost:8000/mrta/status` with nothing behind it →
+   502/404 → pill reads `MRTA N/A`.
+3. With A + B up: start `mrta_server.py`, reload the console, the pill reads `OFF`; toggle it and
+   watch it sit on `connecting` for as long as `connect()` takes, then settle on `ON` with the
+   bot count in the tooltip.
+4. **Not yet done, and no unit test covers it:** with MRTA `ON`, drive two bots at each other
+   from the console, confirm they route around one another; then hit OFF mid-travel and confirm
+   they stop where they are rather than finishing their segment.
+
 ## Rules and invariants
 
 - **A folder with its own `AGENT.md` must have it read before working inside it.** Any folder in
@@ -369,7 +461,7 @@ with them; recover from git history if the real-hardware path is rebuilt.
 ## Contributing conventions
 
 Merged in from the former `CONVENTION.md` (2026-08-27, folded here per the rule that root-level
-documentation in this repo lives in `AGENT.md`, `Button.md`, or `README.md` — nowhere else).
+documentation in this repo lives in `AGENT.md` or `README.md` — nowhere else).
 Folder and file names, code, docstrings, comments, commits, branches, and issues are all in
 **English**.
 
