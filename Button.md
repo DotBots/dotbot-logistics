@@ -151,11 +151,15 @@ never mattered before now do.
    every bot in the snapshot.
 
    One caveat worth carrying forward: `_cancel_agent_tasks` belongs to the
-   `FleetManager`/`Task` layer of the **vendored** `simulation/` snapshot, and
-   `Roadmap.md` §0 plans to replace that layer with upstream MAPF_Simulation's
-   `LifelongGoalOrchestrator`, which has no per-bot eligibility. Per-bot
-   targeting and per-bot cancellation are the two things MRTA mode cannot lose
-   in that migration — this button is one more reason they have to survive it.
+   `FleetManager`/`Task` layer that shipped with the vendored `simulation/` snapshot —
+   removed 2026-08-27, along with the rest of that package (see `AGENT.md`'s "Current
+   known inconsistencies"). `Roadmap.md` §0 used to plan replacing that layer with
+   upstream MAPF_Simulation's `LifelongGoalOrchestrator`; that target turned out not to
+   exist upstream and the section has been corrected — the real upstream repo still has
+   `FleetManager`/`Task` with per-bot eligibility, so this specific loss-of-eligibility
+   risk is not live. Per-bot targeting and per-bot cancellation are still the two things
+   MRTA mode cannot lose whenever reconnection actually happens — this button is one more
+   reason they have to survive it, whatever shape that reconnection takes.
 
 ### D. What OFF means
 
