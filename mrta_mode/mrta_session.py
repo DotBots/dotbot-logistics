@@ -3,9 +3,11 @@ collaborator needed to drive it from manual clicks on the DotBot web UI.
 
 start()/stop()/handle_click()/tick() let a caller other than a blocking CLI
 while-loop -- a frontend -- drive it one step at a time; run() wraps tick()
-in that while-loop for standalone CLI use.
+in that while-loop for standalone CLI use. stop() + halt_all() are the OFF
+path the MRTA mode button drives (mrta_mode/server.py, Button.md D).
 """
 
+import threading
 import time
 from collections import deque
 
@@ -88,6 +90,9 @@ class MRTASession:
         self._step = 0
         self._last_reconcile = 0.0
         self._unknown_addresses: set[str] = set()
+        # Set by stop(); makes an in-flight tick() bail out fast so the OFF
+        # path (Button.md D) does not wait a whole step out.
+        self._stopping = threading.Event()
 
         # Mirrors LifelongGoalOrchestrator's own (private) _target dict: MRTASession
         # is the only caller of set_target(), so it can track the same state without
@@ -183,7 +188,26 @@ class MRTASession:
         self.listener.start()
 
     def stop(self) -> None:
+        """Idempotent. Signals an in-flight tick() to bail, wakes the arrival
+        wait, and stops the WS listener. It does NOT clear waypoints -- the
+        caller joins the tick thread first, then calls halt_all() (Button.md
+        D order)."""
+        self._stopping.set()
+        self.position_store.interrupt()
         self.listener.stop()
+
+    def halt_all(self) -> None:
+        """Fleet-wide "Stop nav": drop every target and PUT [] to each address
+        in the connect()-time snapshot. Call this AFTER the tick thread has
+        joined, so no in-flight send_all_parallel() can re-arm a bot right
+        after (Button.md D). A bot that joined after connect() was never
+        driven by MRTA and is left alone."""
+        for agent_id in self._active_target:
+            self._active_target[agent_id] = None
+        for chain in self._pending_chain.values():
+            chain.clear()
+        if not self.dry_run:
+            self.command_client.send_stop(self.addresses)
 
     def handle_click(self, event: ClickEvent) -> None:
         address = event.address
@@ -233,6 +257,8 @@ class MRTASession:
         reflected in the very next advance_time_step(), so pre-computing ahead
         would either miss it or be thrown away).
         """
+        if self._stopping.is_set():
+            return
         self._step += 1
         events = self.listener.drain_clicks()
         now = time.time()

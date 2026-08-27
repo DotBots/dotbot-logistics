@@ -26,3 +26,8 @@ __all__ = [
     "MRTASession",
     "WaypointCommandClient",
 ]
+
+# mrta_mode.server (the console-toggle HTTP surface) is intentionally not
+# re-exported here: it pulls in fastapi/uvicorn, and the CLI (sim_dotbot_mrta.py)
+# must import mrta_mode without that dependency. Import it as
+# `from mrta_mode.server import serve` when you actually need it.
