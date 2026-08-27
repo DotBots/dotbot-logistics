@@ -236,9 +236,10 @@ driver is ever rebuilt on the `mapf-simulation` engine. All three shared the sam
   after each step, since real hardware drifts from the plan), records `RunMetrics`, writes CSVs
   via `run_metrics.py`.
 
-### `mrta_mode/` — a different pattern (2026-07-23 as `sim_dotbot_mrta.py`, split into `mrta_mode/`
-2026-08-26, reconnected to the real upstream engine 2026-08-27, CLI replaced by `mrta_server.py`
-2026-08-27)
+### `mrta_mode/` — a different pattern
+
+Timeline: 2026-07-23 as `sim_dotbot_mrta.py`; split into `mrta_mode/` 2026-08-26; reconnected to
+the real upstream engine 2026-08-27; CLI replaced by `mrta_server.py` 2026-08-27.
 
 Not a fixed-goal batch run: every bot starts **parked** (no goals) and the session runs
 **indefinitely**, waiting for an operator to drive it. The entry point is `mrta_server.py` (the
