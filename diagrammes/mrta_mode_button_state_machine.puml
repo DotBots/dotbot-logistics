@@ -1,0 +1,40 @@
+@startuml mrta_mode_button_state_machine
+
+title MRTA mode — server-side state machine (mrta_mode/server.py : MrtaMode)
+
+skinparam DefaultFontSize 13
+skinparam ArrowColor #333333
+skinparam StateBorderColor #4A90D9
+skinparam StateBackgroundColor #EAF4FF
+skinparam NoteBackgroundColor #FFF8E1
+skinparam NoteBorderColor #E0C060
+
+[*] --> off
+
+off : the resting state. A map click means\n"drive there" (plain PyDotBot).\nbots = null, detail = last reason (if any)
+connecting : POST accepted (202). connect() runs on a\nworker thread: retries 10 x 1s for min_bots,\nbuilds a fresh WorldEngine + PIBT world
+on : tick() loop running on its thread.\nA map click means "PIBT routes you there".\nbots = fleet size snapshotted at connect()
+stopping : POST accepted (202). stop flag set ->\narrival wait woken -> tick thread joined ->\nPUT [] to every address in the snapshot
+
+off --> connecting : POST /mode {on:true}
+connecting --> on : connect() ok
+connecting --> off : connect() fails\n(MRTAConnectionError,\nmessage -> detail)
+on --> stopping : POST /mode {on:false}
+stopping --> off : halt_all() done
+on --> off : tick loop crashes\n(detail = "the planning\nloop stopped unexpectedly")
+
+note right of connecting
+  Rejected with 409 ("ask again next poll"): ANY POST while
+  state is connecting or stopping. That refusal is what stops
+  a double click from starting a second session on the same bots.
+end note
+
+note right of on
+  A POST that matches the settled state (on while on, off while
+  off) is a no-op, answered 202.
+
+  No resume: every ON is a fresh PIBT world, so OFF then ON is
+  how you pick up bots that joined after connect().
+end note
+
+@enduml
