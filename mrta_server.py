@@ -2,25 +2,29 @@
 """
 mrta_server.py — HTTP server that puts MRTA mode behind the console's toggle.
 
-Same click-to-target behaviour as `sim_dotbot_mrta.py`, but instead of a
-Ctrl+C CLI loop it exposes the two routes the DotBot web console's MRTA
-pill calls (through PyDotBot's `/mrta/*` proxy):
+This is the live entry point of the repo. It runs the click-to-target MRTA
+session (mrta_mode/) but, instead of a Ctrl+C CLI loop, exposes the two
+routes the DotBot web console's MRTA pill calls through PyDotBot's
+`/mrta/*` proxy:
 
     GET  /status              -> {"state", "bots", "detail"}
     POST /mode  {"on": bool}  -> 202 transition state / 409 while busy
 
-See `Button.md` for the contract and `mrta_mode/server.py` for the state
-machine. The MRTA session is (re)built fresh on every ON: the fleet is
-snapshotted at connect() time, so OFF/ON is how you pick up bots that
-joined late.
+See AGENT.md's "The MRTA mode toggle (console button)" section for the
+contract, and `mrta_mode/server.py` for the state machine. The MRTA
+session is (re)built fresh on every ON: the fleet is snapshotted at
+connect() time, so OFF/ON is how you pick up bots that joined late.
 
 Prerequisites:
+    # A seed TOML with >= 2 bots; PyDotBot ships a sample as
+    # simulator_init_state.toml, or point --simulator-init-state at your own.
     dotbot run simulator \\
         --map-size 2000x2000 \\
-        --simulator-init-state simulator_init_state.toml
+        --simulator-init-state <path/to/simulator_init_state.toml> \\
+        --mrta-url http://localhost:8002
 
-    # PyDotBot controller started with --mrta-url http://localhost:8002
-    # (or [run.controller] mrta_url, or DOTBOT_MRTA_URL) so /mrta/* proxies here.
+    # --mrta-url (or [run.controller] mrta_url, or DOTBOT_MRTA_URL) is what
+    # points the controller's /mrta/* proxy at this server.
 
 Usage:
     python mrta_server.py                     # serve on 0.0.0.0:8002
@@ -32,7 +36,7 @@ import argparse
 
 from mrta_mode.server import serve
 
-# Mirrors sim_dotbot_mrta.py's defaults; a shared CLI is Roadmap item 1.
+# Defaults for the MRTA session connect() call (see AGENT.md "Grid <-> mm mapping").
 DEFAULT_BASE_URL = "http://localhost:8000"
 DEFAULT_CELL_MM = None
 DEFAULT_MAP_CELLS = 5
@@ -47,7 +51,7 @@ DEFAULT_MRTA_PORT = 8002
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="MRTA mode HTTP server (drives sim_dotbot_mrta's MRTASession from the console toggle)"
+        description="MRTA mode HTTP server (drives mrta_mode's MRTASession from the console toggle)"
     )
     parser.add_argument("--mrta-host", default=DEFAULT_MRTA_HOST,
                         help=f"Bind address for this server (default: {DEFAULT_MRTA_HOST})")
