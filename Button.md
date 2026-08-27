@@ -151,7 +151,7 @@ never mattered before now do.
 
    **Update, 2026-08-27: the mechanism this fix needs now exists, but the fix
    itself is still not applied.** `mrta_mode`/`sim_dotbot_mrta.py` were
-   reconnected to the real upstream engine the same day (`Roadmap.md` §0):
+   reconnected to the real upstream engine the same day (`AGENT.md`'s "Roadmap" §0):
    `MRTASession` now drives `pibt.LifelongGoalOrchestrator` instead of the old
    `FleetManager`/`Task` model, and `_cancel_agent_tasks()` has no equivalent —
    nor does it need one. Cancelling an agent's target is just
